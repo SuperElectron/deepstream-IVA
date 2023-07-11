@@ -1,0 +1,6 @@
+set(MODULE_NAME "BSHOSHANY_threadPool.cmake")
+message(STATUS ${MODULE_NAME} [start] ----------------------)
+find_path(BSHOSHANY_THREAD_POOL_INCLUDE_DIRS "BS_thread_pool.hpp")
+target_include_directories(${PROJECT_NAME}_LIB PUBLIC ${BSHOSHANY_THREAD_POOL_INCLUDE_DIRS})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+message(STATUS ${MODULE_NAME} [finish] ----------------------)

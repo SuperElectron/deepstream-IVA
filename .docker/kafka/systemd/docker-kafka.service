@@ -1,0 +1,18 @@
+[Unit]
+Description=FocusBug-overlay project container (kafka)
+Requires=docker.service
+After=docker.service
+
+[Service]
+# User=focusbug-overlay
+User=mat
+RestartSec=5
+Restart=on-failure
+ExecStartPre=/bin/bash -c "docker stop kafka || echo 'ready'"
+ExecStartPre=/bin/bash -c "docker container rm kafka ||  echo 'ready'"
+ExecStartPre=/bin/bash -c "docker container prune -f || echo 'ready'"
+ExecStart=/bin/bash -c "make -C /home/mat/code/github/focusBug-overlay start_kafka"
+ExecStop=/usr/bin/docker stop kafka
+
+[Install]
+WantedBy=default.target
