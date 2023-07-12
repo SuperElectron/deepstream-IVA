@@ -29,6 +29,7 @@ bool Processing::set_configs(njson conf)
         .model_type = conf["model_type"],
         .publish = conf["publish"],
         .save = conf["save"],
+        .display_detections = conf["display_detections"],
         .bbox_line_thickness = conf["bbox_line_thickness"],
         .min_confidence_to_display = conf["min_confidence_to_display"],
         .font_size = conf["font_size"],
@@ -55,17 +56,15 @@ void core::Processing::set_up(int source_count)
       .meta_queue = new std::queue<njson>()};
 
   // instantiate callback data (for each stream)
-  this->_cb_lock.lock();
-  this->_cb_data.resize(source_count);
+  this->_display_lock.lock();
+  this->_display_queue.resize(source_count);
   for (int q=0; q< source_count; q++)
   {
-    this->_cb_data[q] = new std::queue<njson>();
+    this->_display_queue[q] = new std::queue<njson>();
   }
-  this->_cb_lock.unlock();
+  this->_display_lock.unlock();
 
-  LOG(INFO) << "Set up CBstore:  size=" << this->_cb_data.size();
-
-  LOG(INFO) << "Setting up the cb_stores for sources=(" << source_count << ")";
+  LOG(INFO) << "Processing set up for source=(" << this->_display_queue.size() << ")";
 }
 
 
@@ -103,7 +102,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
     LOG(FATAL) << "The pad doesn't have image dimensions!";
   VLOG(DEBUG) << "GST_EVENT_CAPS (video_format=" << video_format << ",width=" << width << ",height=" << height << ")";
 
-  njson payload;
+//  njson payload;
 
   NvDsMetaList *frame_list = NULL;
   NvDsMetaList *object_list = NULL;
@@ -114,6 +113,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
   // loop over sources (a batch_meta exists for each video source)
   for (frame_list = batch_meta->frame_meta_list; frame_list != NULL; frame_list = frame_list->next)
   {
+    njson payload;
     NvDsFrameMeta *frame_meta = (NvDsFrameMeta *)(frame_list->data);
 
     // save meta information for all objects detected
@@ -130,7 +130,8 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
 
     // loop through detected objects
     int objects_detected = 0;
-    for (object_list = frame_meta->obj_meta_list; object_list != NULL; object_list = object_list->next) {
+    for (object_list = frame_meta->obj_meta_list; object_list != NULL; object_list = object_list->next)
+    {
       // cast data and add inference objects to payload
       NvDsObjectMeta *obj_meta = (NvDsObjectMeta *)(object_list->data);
       NvDsComp_BboxInfo tracker_bbox_info = obj_meta->tracker_bbox_info;
@@ -161,72 +162,204 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
       float confidence = obj_meta->confidence * 100;
 
       payload["inference"][objects_detected]["bbox"] = {{"x_max", (int)xmax}, {"x_min", (int)xmin}, {"y_max", (int)ymax}, {"y_min", (int)ymin}};
-      payload["inference"][objects_detected]["confidence"] = (int)confidence;
-      payload["inference"][objects_detected]["label"] = obj_meta->obj_label;
-      payload["inference"][objects_detected]["tracking_id"] = obj_meta->object_id;
-      payload["inference"][objects_detected]["camera_id"] = frame_meta->source_id;
+      payload["inference"][objects_detected]["confidence"] = (int) confidence;
+      payload["inference"][objects_detected]["label"] = (std::string) obj_meta->obj_label;
+      payload["inference"][objects_detected]["tracking_id"] = (int) obj_meta->object_id;
+      payload["inference"][objects_detected]["camera_id"] = (int) frame_meta->source_id;
+    } // parse next detection for this streamId
 
-      try{
-        this->_cb_data[(int)frame_meta->source_id]->push(payload);
-      } catch (const std::exception &e) {
-        LOG(ERROR) << "Error adding to queue: " << e.what();
+    // if this source has inference detections, act on it
+    if (payload.contains("inference"))
+    {
+      // send payload to kafka producer
+      if (this->_configs.publish)
+      {
+        this->_add_meta_queue(payload);
+        this->_create_kafka_publish_event();
       }
 
-//      queue.push(payload);
-//      this->_cb_data.osd_data[frame_meta->source_id].push(payload);
+      // save detection data to json (for debugging)
+      if (this->_configs.save) {
+        std::stringstream ss;
+        ss << "/tmp/.cache/payload/frame_" << std::setw(4) << std::setfill('0') << payload["meta"]["frame"] << ".json";
+        std::string file_name = ss.str();
+        std::ofstream o(file_name.c_str());
+        o << std::setw(4) << payload << std::endl;
+      }
+
+      // add data to display queue (which writes data onto the screen)
+      if(this->_configs.display_detections)
+      {
+        this->_display_lock.lock();
+        try {
+          this->_display_queue[(int)frame_meta->source_id]->push(payload);
+        } catch (const std::exception &e) {
+          LOG(ERROR) << "Error adding to queue: " << e.what();
+        }
+        this->_display_lock.unlock();
+      }
     }
-    // parse next stream_id
-  }
-  VLOG(DEBUG) << "Detection njson: " << payload.dump(4);
-  if (payload.contains("inference")) {
-    if (this->_configs.publish)
-    {
-      this->_add_meta_queue(payload);
-      this->_create_kafka_publish_event();
-    }
-    if (this->_configs.save) {
-      std::stringstream ss;
-      ss << "/tmp/.cache/payload/frame_" << std::setw(4) << std::setfill('0') << payload["meta"]["frame"] << ".json";
-      std::string file_name = ss.str();
-      std::ofstream o(file_name.c_str());
-      o << std::setw(4) << payload << std::endl;
-    }
-  }
+
+  } // parse next stream_id
+
   return true;
 };
+
+
+bool core::Processing::osd_callback(GstPad *pad, GstPadProbeInfo *info)
+{
+
+  // Get the parent object of the pad
+  GstElement *parent_element = GST_ELEMENT(gst_pad_get_parent(pad));
+  const gchar *parent_name = gst_element_get_name(parent_element);
+
+  GstElement *bin_element = GST_ELEMENT(gst_element_get_parent(parent_element));
+  std::string binName;
+  if (GST_IS_BIN(bin_element)) {
+    // The element belongs to a bin
+    GstBin *bin = GST_BIN(bin_element);
+    binName = (std::string) gst_element_get_name(GST_ELEMENT(bin));
+  } else {
+    LOG(FATAL) << "GST_IS_BIN(bin_element) is not true";
+  }
+  // get streamId from the last character in the bin: name schema={sink0, sink1, sinkN}
+  int sourceStreamId = std::stoi(binName.substr(binName.length() - 1));
+//  LOG(WARNING) << "The pad belongs to GStElement=" << parent_name << " and GstBin=" << binName << " (sourceStreamId=" << sourceStreamId << ")";
+  // check if data is available on the queue
+  this->_display_lock.lock();
+  int size = this->_display_queue[sourceStreamId]->size();
+  this->_display_lock.unlock();
+  if(size < 1)
+    return true;
+
+  // pull data from the queue
+  njson detection;
+  this->_display_lock.lock();
+  detection = this->_display_queue[sourceStreamId]->front();
+  this->_display_queue[sourceStreamId]->pop();
+  this->_display_lock.unlock();
+
+  // error out if no payload is available
+  if (detection.empty())
+    LOG(FATAL) << "[!BUG!] Empty detection (invalid data) pulled from _display_queue";
+
+  std::string video_format;
+  int width, height;
+  this->get_pad_video_caps(pad, video_format, width, height);
+  VLOG(DEBUG) << "Bin=" << binName << " with video format=" << video_format << ",width=" << width << ",height=" << height;
+
+  // extract the Buffer and operate on its video type
+  GstBuffer *buf = (GstBuffer *)info->data;
+  // Needed to get image width and height
+  GstMapInfo map;
+  memset(&map, 0, sizeof(map));
+  /* Map the buffer contents and get the pointer to NvBufSurface. */
+  if (!gst_buffer_map(GST_BUFFER(info->data), &map, GST_MAP_READWRITE)) {
+    LOG(ERROR) << "Error Failed to map gst buffer. Skipping";
+    return false;
+  }
+
+  if (video_format.compare("RGB") == 0) {
+    VLOG(DEBUG) << "Detected RGB caps format=" << video_format;
+    cv::Mat input_frame(cv::Size(width, height), CV_8UC3, (char *)map.data, cv::Mat::AUTO_STEP);
+    this->_write_detections_to_image(input_frame, detection);
+
+  }
+  else if (video_format.compare("YV12") == 0) {
+    /**
+      * openCV type conversions
+      * @reference: https://docs.opencv.org/3.4/d8/d01/group__imgproc__color__conversions.html
+      *
+     */
+    VLOG(DEBUG) << "Detected YV12 caps format=" << video_format;
+    cv::Mat input_frame(height + height / 2, width, CV_8UC1, (char *)map.data, cv::Mat::AUTO_STEP);
+    cv::Mat bgr_frame(width, height, CV_8UC3);
+    cv::cvtColor(input_frame, bgr_frame, cv::COLOR_YUV2BGR_YV12, 3);
+    this->_write_detections_to_image(bgr_frame, detection);
+    cv::cvtColor(bgr_frame, input_frame, cv::COLOR_BGR2YUV_YV12, 3);
+  }
+  else {
+    LOG(FATAL) << "Detected caps that we cannot convert for overlay writing:" << video_format;
+  }
+  gst_buffer_unmap(buf, &map);
+  return true;
+}
+
+
+void core::Processing::get_pad_video_caps(GstPad *pad, std::string &video_format, int &width, int &height)
+{
+  // get format (e.g. video/x-raw) from GstPad
+  GstCaps *caps = gst_pad_get_current_caps(pad);
+  if (!caps)
+    caps = gst_pad_query_caps(pad, NULL);
+
+  GstStructure *s = gst_caps_get_structure(caps, 0);
+  bool res = gst_structure_get_int(s, "width", &width);
+  res |= gst_structure_get_int(s, "height", &height);
+  video_format = (std::string)gst_structure_get_string(s, "format");
+}
 
 /**
  * @brief write payload bounding box + text onto the image
  *
  * @param frame the video frame converted into cv::Mat from Gstreamer buffer
  */
-void core::Processing::_write_detections_to_image(cv::Mat frame, njson detection, std::string text)
+void core::Processing::_write_detections_to_image(cv::Mat frame, njson payload)
 {
-  // if detected confidence is greater than out desired confidence to display, write bbox on the image with text
-  if(detection["confidence"] > this->_configs.min_confidence_to_display)
-  {
-    cv::rectangle(
-        frame,
-        cv::Point((int)detection["bbox"]["xmin"], (int)detection["bbox"]["ymin"]),
-        cv::Point((int)detection["bbox"]["xmax"], (int)detection["bbox"]["ymax"]),
-        cv::Scalar(DISPLAY_RED, DISPLAY_GREEN, DISPLAY_BLUE),
-        this->_configs.bbox_line_thickness,
-        cv::LINE_8
-    );
 
-    // creating text to go above bounding box
-    cv::Point text_position((int)detection["bbox"]["xmin"], (int)detection["bbox"]["ymin"] - 20);
-    cv::putText(
-        frame,
-        text.c_str(),
-        text_position,
-        cv::FONT_HERSHEY_COMPLEX,
-        this->_configs.font_size,
-        CV_RGB(DISPLAY_RED, DISPLAY_GREEN, DISPLAY_BLUE),
-        this->_configs.bbox_line_thickness,
-        cv::LINE_AA
-    );
+  if (!payload.contains("inference"))
+    LOG(FATAL) << "[_write_detections_to_image] Payload entered function when it shouldn't!";
+
+  njson detection = payload["inference"];
+  for (int d = 0; d < detection.size(); d++)
+  {
+    int tracking_id, confidence, xmin, ymin, xmax, ymax;
+    std::string label, description;
+    try
+    {
+      // set the text to display
+      tracking_id = detection[d]["tracking_id"].get<int>();
+      label = detection[d]["label"].get<std::string>();
+      confidence = detection[d]["confidence"].get<int>();
+      xmin = (int)detection[d]["bbox"]["x_min"].get<int>();
+      ymin = (int)detection[d]["bbox"]["y_min"].get<int>();
+      xmax = (int)detection[d]["bbox"]["x_max"].get<int>();
+      ymax = (int)detection[d]["bbox"]["y_max"].get<int>();
+    } catch (const std::exception &e) {
+      LOG(FATAL) << "[_write_detections_to_image] NJSON FAIL: " << e.what();
+    }
+
+    description = label + (std::string) "[" + std::to_string(tracking_id) + "]" +
+                  (std::string) " % " + std::to_string(confidence);
+
+    // if detected confidence is greater than out desired confidence to display, write bbox on the image with text
+    if(confidence > this->_configs.min_confidence_to_display)
+    {
+      cv::rectangle(
+          frame,
+          cv::Point(xmin, ymin),
+          cv::Point(xmax, ymax),
+          cv::Scalar(DISPLAY_RED, DISPLAY_GREEN, DISPLAY_BLUE),
+          this->_configs.bbox_line_thickness,
+          cv::LINE_8
+      );
+
+      // creating text to go above bounding box
+      cv::Point text_position(xmin, ymin - 20);
+      cv::putText(
+          frame,
+          description.c_str(),
+          text_position,
+          cv::FONT_HERSHEY_COMPLEX,
+          this->_configs.font_size,
+          CV_RGB(DISPLAY_RED, DISPLAY_GREEN, DISPLAY_BLUE),
+          this->_configs.bbox_line_thickness,
+          cv::LINE_AA
+      );
+    }
+
   }
+
 }
 
 /// MANAGING DATA FLOW

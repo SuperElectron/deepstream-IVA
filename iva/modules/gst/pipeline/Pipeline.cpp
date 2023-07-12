@@ -111,14 +111,15 @@ bool Pipeline::_create_pipeline()
       LOG(ERROR) << "Failed to add sinkBin[" << b << "] to pipeline";
       return false;
     }
+
     // add callbacks to display bounding boxes
     GstElement *cb_element = gst_bin_get_by_name(GST_BIN(sinkBin), "sink_caps");
     if(cb_element == NULL)
       LOG(FATAL) << "Could not find sink_caps in sinkBin(" << b << ")";
 
     GstPad *probe_pad = gst_element_get_static_pad(cb_element, "src");
-    if(!gst_pad_add_probe(probe_pad, GST_PAD_PROBE_TYPE_BUFFER, core::GstCallbacks::probe_callback, (gpointer)this->processor, NULL))
-      LOG(FATAL) << "Could not add pad probe to nv_tracker";
+    if(!gst_pad_add_probe(probe_pad, GST_PAD_PROBE_TYPE_BUFFER, core::GstCallbacks::osd_callback, (gpointer)this->processor, NULL))
+      LOG(FATAL) << "Could not add pad probe to sink_caps";
     gst_object_unref(probe_pad);
   }
 
@@ -234,7 +235,6 @@ void Pipeline::start()
     LOG(WARNING) << "Could not set up the pipeline module";
     throw -1;
   }
-
   this->_pool.push_task(&Pipeline::_run_pipeline, this);
 }
 

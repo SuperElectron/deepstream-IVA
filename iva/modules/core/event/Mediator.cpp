@@ -108,7 +108,6 @@ void core::Mediator::notify(core::EventBase *event)
       else
         LOG(WARNING) << "Mediator found that Kafka is already terminated";
 
-
       LOG(INFO) << "Mediator closing app_context";
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
       this->app_context->kill_app();

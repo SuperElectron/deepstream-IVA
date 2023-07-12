@@ -74,6 +74,7 @@ struct ProcessingSettings
     std::string model_type;
     bool publish;
     bool save;
+    bool display_detections;
     int bbox_line_thickness;
     int min_confidence_to_display;
 	int font_size;
@@ -133,7 +134,8 @@ public:
 
     /// PROCESSING METADATA
     bool probe_callback(GstPad *pad, GstPadProbeInfo *info);
-
+    bool osd_callback(GstPad *pad, GstPadProbeInfo *info);
+    void get_pad_video_caps(GstPad *pad, std::string &video_format, int &width, int &height);
     /// MANAGING DATA FLOW
     njson get_meta_queue();
     bool check_meta_queue();
@@ -148,13 +150,13 @@ private:
     int _module_id;
 
     /// write detection data onto screen
-    void _write_detections_to_image(cv::Mat frame, njson detection, std::string text);
+    void _write_detections_to_image(cv::Mat frame, njson detection);
 
     /// MANAGING DATA FLOW
     // processing container for each video source
     VideoSourceData _processor;
-    std::mutex _cb_lock = std::mutex();
-    std::vector<std::queue<njson>*> _cb_data;
+    std::mutex _display_lock = std::mutex();
+    std::vector<std::queue<njson>*> _display_queue;
 
     void _add_meta_queue(njson payload);
     void _create_kafka_publish_event();

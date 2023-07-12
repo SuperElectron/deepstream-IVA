@@ -162,9 +162,9 @@ inline GstPadProbeReturn osd_callback(GstPad *pad, GstPadProbeInfo *info, gpoint
   // unpack pointer
   auto processor = (core::Processing *)u_data;
   // NvDS structures
-//  bool ret = processor->probe_callback(pad, info);
-//  if (!ret)
-//    GST_PAD_PROBE_PASS;
+  bool ret = processor->osd_callback(pad, info);
+  if (!ret)
+    GST_PAD_PROBE_PASS;
 
   return GST_PAD_PROBE_OK;
 }

@@ -219,15 +219,14 @@ inline void on_pad_added(GstElement *src_element, GstPad *src_pad, gpointer data
   GstCaps *caps = gst_pad_get_current_caps(src_pad);
   pipelineUtils::get_element_name(src_element, src_element_name);
 
-  LOG(INFO) << "[on_pad_added] called (bin=" << bin_name << ", src_element=" << src_element_name << ")";
-
   // checks to ensure the right pad is being linked
   if (g_str_has_prefix(GST_PAD_NAME(src_pad), "video")) {
-    LOG(INFO) << "[on_pad_added]\n -- dynamic linking with video prefix for src element: " << src_element_name;
+    LOG(INFO) << "[on_pad_added]\n -- dynamic linking (padname has video prefix) (bin=" << bin_name << ", src_element=" << src_element_name << ")";
     sink_element = gst_bin_get_by_name(GST_BIN(bin), "src_parser");
   }
   else {
-    LOG(WARNING) << "[on_pad_added]\n -- [Ignore] Unexpected pad type=(" << GST_PAD_NAME(src_pad) << ") ** [ignore link] ** ";
+    LOG(INFO) << "[on_pad_added]\n -- [Ignore] Unexpected pad type=(" << GST_PAD_NAME(src_pad)
+              << ") called by bin=(" << bin_name << ", src_element=" << src_element_name << ") ** [ignore link] ** ";
     return;
   }
 
@@ -236,24 +235,20 @@ inline void on_pad_added(GstElement *src_element, GstPad *src_pad, gpointer data
   GstPad *sink_pad;
   sink_pad = gst_element_get_static_pad(sink_element, "sink");
   if (gst_pad_is_linked(sink_pad)) {
-    LOG(INFO) << "[on_pad_added]\n -- sinkpad of element " << sink_element_name << " is already linked. ** [ignore link] ** ";
+    LOG(WARNING) << "[on_pad_added]\n -- sinkpad already linked. called by bin=(" << bin_name << ", src_element=" << src_element_name << ")** [ignore link] ** ";
     gst_object_unref(sink_pad);
     return;
   }
 
-  LOG(INFO) << "[on_pad_added]\n -- linking elements src(" << src_element_name << ") and sink(" << sink_element_name << ")";
-
   // attempt to link the pads
   GstPadLinkReturn ret;
   ret = gst_pad_link(src_pad, sink_pad);
-
-  if (GST_PAD_LINK_FAILED(ret)) {
-    LOG(ERROR) << "[on_pad_added]\n -- [FAILURE] dynamic link on src(" << src_element_name << ") and sink(" << sink_element_name
+  if (GST_PAD_LINK_FAILED(ret))
+    LOG(FATAL) << "[on_pad_added]\n -- [FAILURE] dynamic link for bin=(" << bin_name << " on src=(" << src_element_name << ") and sink(" << sink_element_name
                << "). ERROR: " << pipelineUtils::get_link_status(ret) << "\n ** [ignore link] ** ";
-    return;
-  }
 
-  LOG(INFO) << "[on_pad_added]\n -- Dynamic link successful for elements: " << src_element_name << " and " << sink_element_name;
+  LOG(INFO) << "[on_pad_added]\n -- [success] Dynamic link called by bin=("
+            << bin_name << ") on elements=(src:" << src_element_name << ", sink:" << sink_element_name << ")";
   gst_object_unref(sink_pad);
 }
 
@@ -297,7 +292,7 @@ inline GstElement* createMp4SrcBin(std::string binName, std::string filesrcLocat
 		LOG(FATAL) << "Could not add the ghostPad to the bin=" << binName << ", pad=" << ghostPadName;
 	gst_pad_set_active (GST_PAD_CAST (binPad0), 1);
 	gst_object_unref(GST_OBJECT(binPad0));
-	LOG(INFO) << "Added ghost pad to bin=" << binName << " with pad=" << ghostPadName;
+	VLOG(DEBUG) << "Added ghost pad to bin=" << binName << " with pad=" << ghostPadName;
 	return bin;
 }
 
@@ -335,7 +330,7 @@ inline GstElement* createV4l2SrcBin(std::string binName, std::string deviceId)
 		LOG(FATAL) << "Could not add the ghostPad to the bin=" << binName << ", pad=" << ghostPadName;
 	gst_pad_set_active (GST_PAD_CAST (binPad0), 1);
 	gst_object_unref(GST_OBJECT(binPad0));
-	LOG(INFO) << "Added ghost pad to bin=" << binName << " with pad=" << ghostPadName;
+	VLOG(DEBUG) << "Added ghost pad to bin=" << binName << " with pad=" << ghostPadName;
 	return bin;
 }
 
@@ -353,7 +348,7 @@ inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_
 #else
   memory_type = 0;
 #endif
-  LOG(INFO) << "Setting nvbuf-memory-type=" << memory_type;
+  VLOG(DEBUG) << "Setting nvbuf-memory-type=" << memory_type;
 
   g_object_set(nv_mux,
                "nvbuf-memory-type", memory_type,
@@ -405,7 +400,7 @@ inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_
       LOG(FATAL) << "Could not add the ghostPad to bin=" << binName << ", ghostPadName=" << inputGhostPadName;
     gst_object_unref(GST_OBJECT(inputBinPad));
     gst_pad_set_active (GST_PAD_CAST (inputGhostPad), 1);
-    LOG(INFO) << "Added ghost pad to bin=" << binName << " with pad=" << inputGhostPadName;
+    VLOG(DEBUG) << "Added ghost pad to bin=" << binName << " with pad=" << inputGhostPadName;
 
     // create ghost pad for each output pad (src)
     std::string outputPadName = (std::string) "src_" + std::to_string(i);
@@ -423,7 +418,7 @@ inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_
       LOG(FATAL) << "Could not add the ghostPad to bin=" << binName << ", ghostPadName=" << outputGhostPadName;
     gst_object_unref(GST_OBJECT(outputBinPad));
     gst_pad_set_active (GST_PAD_CAST (outputGhostPad), 1);
-    LOG(INFO) << "Added ghost pad to bin=" << binName << " with pad=" << outputGhostPadName;
+    VLOG(DEBUG) << "Added ghost pad to bin=" << binName << " with pad=" << outputGhostPadName;
   }
   return bin;
 }
@@ -444,8 +439,9 @@ inline GstElement* createSinkBinToDisplay(std::string binName, std::string input
                "caps", gst_caps_from_string("video/x-raw,format=(string)YV12"),
                NULL);
   sink_queue = gst_element_factory_make("queue", "sink_queue");
-  sink = gst_element_factory_make("autovideosink", "sink");
-  g_object_set(sink, "sync", true, NULL);
+  sink = gst_element_factory_make("xvimagesink", "sink");
+  g_object_set(sink, "sync", false, NULL);
+  g_object_set(sink, "async", true, NULL);
 
   // add elements to the bin
   gst_bin_add_many(GST_BIN(bin), sink_nvconvert, sink_convert, sink_caps, sink_queue, sink, NULL);
@@ -467,7 +463,7 @@ inline GstElement* createSinkBinToDisplay(std::string binName, std::string input
     LOG(FATAL) << "Could not add the ghostPad to bin=" << binName << ", ghostPadName=" << inputGhostPadName;
   gst_object_unref(GST_OBJECT(inputBinPad));
   gst_pad_set_active (GST_PAD_CAST (inputGhostPad), 1);
-  LOG(INFO) << "Added ghost pad to bin=" << binName << " with pad=" << inputGhostPadName;
+  VLOG(DEBUG) << "Added ghost pad to bin=" << binName << " with pad=" << inputGhostPadName;
   return bin;
 }
 
