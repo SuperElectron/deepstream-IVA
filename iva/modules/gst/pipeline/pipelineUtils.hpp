@@ -19,6 +19,7 @@ namespace fs = std::filesystem;
  */
 namespace pipelineUtils {
 
+
 /**
  * @struct BusStruct
  * @brief holds application information for bus_call in pipeline
@@ -288,11 +289,9 @@ inline GstElement* createMp4SrcBin(std::string binName, std::string filesrcLocat
 	if(gst_element_link_many(h264parse, nvv4l2decoder, queue, NULL) != TRUE)
 		LOG(FATAL) << "Failed to link many elements in bin=" << binName << ": Elements=(h264parse, nvv4l2decoder, queue)";
 
-	// create ghost pad at output for future linking on tee pad (src_%u)
-	int num_pads = 0;
-	// Add ghost pads to access src in bin
-	std::string ghostPadName = (std::string) "output" + std::to_string(num_pads);
-	std::string padName = (std::string) "src";
+	// Add ghost pads to access src in bin for future linking
+	std::string ghostPadName = "output0";
+	std::string padName = "src";
 	GstPad* binPad0 = gst_element_get_static_pad(queue, padName.c_str());
 	if(!gst_element_add_pad(bin, gst_ghost_pad_new(ghostPadName.c_str(), binPad0)))
 		LOG(FATAL) << "Could not add the ghostPad to the bin=" << binName << ", pad=" << ghostPadName;
@@ -340,128 +339,135 @@ inline GstElement* createV4l2SrcBin(std::string binName, std::string deviceId)
 	return bin;
 }
 
-inline GstElement* createInferenceBinToFakeSink(std::string binName, std::string inputPadName, int num_src)
+inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_src)
 {
   // create bin
   GstElement* bin = gst_bin_new(binName.c_str());
   // create elements
-  GstElement *nvstreammux, *nvinfer, *nvtracker, *queue, *fakesink;
-  nvstreammux = gst_element_factory_make("nvstreammux", "nv_mux");
-  g_object_set(nvstreammux,
-               "nvbuf-memory-type", 3,
-               "batch-size", 1,
+  GstElement *nv_mux, *nv_infer, *nv_tracker, *nv_convert, *nv_demux;
+  nv_mux = gst_element_factory_make("nvstreammux", "nv_mux");
+
+  int memory_type = 0;
+#ifdef PLATFORM_TEGRA
+  memory_type = 3;
+#else
+  memory_type = 0;
+#endif
+  LOG(INFO) << "Setting nvbuf-memory-type=" << memory_type;
+
+  g_object_set(nv_mux,
+               "nvbuf-memory-type", memory_type,
+               "batch-size", num_src,
                "width", 1280,
                "height", 720,
                "batched-push-timeout", 40000,
                "sync-inputs", false,
                "live-source", false,
                NULL);
-  nvinfer = gst_element_factory_make("nvinfer", "nv_detection");
-  g_object_set(nvinfer,
-               "config-file-path","/src/configs/model/face_detection/detection_face.yml",
-               "batch-size", 1,
+  nv_infer = gst_element_factory_make("nvinfer", "nv_detection");
+  g_object_set(nv_infer,
+               "config-file-path","/src/configs/detection.yml",
+               "batch-size", num_src,
                "qos", 1,
                NULL);
 
-  nvtracker = gst_element_factory_make("nvtracker", "nv_tracker");
-  g_object_set(nvtracker,
-               "ll-config-file", "/src/configs/model/tracker.yml",
+  nv_tracker = gst_element_factory_make("nvtracker", "nv_tracker");
+  g_object_set(nv_tracker,
+               "ll-config-file", "/src/configs/tracker.yml",
                "ll-lib-file", "/opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so",
                "enable-batch-process", 1,
                "tracker-width", 640,
                "tracker-height", 480,
                NULL);
-  queue = gst_element_factory_make("queue", "nv_queue");
-  fakesink = gst_element_factory_make("fakesink", "sink");
-  g_object_set(fakesink, "sync", false, NULL);
+  nv_convert = gst_element_factory_make("nvvideoconvert", "nv_convert");
+  nv_demux = gst_element_factory_make("nvstreamdemux", "nv_demux");
 
   // add elements to the bin
-  gst_bin_add_many(GST_BIN(bin), nvstreammux, nvinfer, nvtracker, queue, fakesink, NULL);
-  if(!gst_element_link_many(nvstreammux, nvinfer, nvtracker, queue, fakesink, NULL))
+  gst_bin_add_many(GST_BIN(bin), nv_mux, nv_infer, nv_tracker, nv_convert, nv_demux, NULL);
+  if(!gst_element_link_many(nv_mux, nv_infer, nv_tracker, nv_convert, nv_demux, NULL))
     LOG(FATAL) << "Failed to add elements to bin=" << binName;
 
   // create ghost pad at output for future linking
   for (int i = 0; i < num_src; i++) {
-    std::string padName = (std::string) "sink_" + std::to_string(i);
-    GstPad *setSrcBinPad = gst_element_get_request_pad(nvstreammux, padName.c_str());
+    // create ghost pad for each input pad (sink)
+    std::string inputPadName = (std::string) "sink_" + std::to_string(i);
+    GstPad *inputBinPad = gst_element_get_request_pad(nv_mux, inputPadName.c_str());
     // Check if the pad was created.
-    if (setSrcBinPad == NULL)
-      LOG(FATAL) << "Could not get the tee request pad=" << padName;
+    if (inputBinPad == NULL)
+      LOG(FATAL) << "Could not get the nvstreammux request pad=" << inputPadName;
 
-    std::string ghostPadName = (std::string) "input" + std::to_string(i);
-    GstPad *ghostPad = gst_ghost_pad_new(ghostPadName.c_str(), setSrcBinPad);
-    if (ghostPad == NULL)
-      LOG(FATAL) << "Could not create the ghostPad for bin=" << binName << ", ghostPadName=" << ghostPadName;
+    std::string inputGhostPadName = (std::string) "input" + std::to_string(i);
+    GstPad *inputGhostPad = gst_ghost_pad_new(inputGhostPadName.c_str(), inputBinPad);
+    if (inputGhostPad == NULL)
+      LOG(FATAL) << "Could not create the ghostPad for bin=" << binName << ", ghostPadName=" << inputGhostPadName;
 
-    if (!gst_element_add_pad(bin, ghostPad))
-      LOG(FATAL) << "Could not add the ghostPad to bin=" << binName << ", ghostPadName=" << ghostPadName;
-    gst_object_unref(GST_OBJECT(setSrcBinPad));
-    gst_pad_set_active (GST_PAD_CAST (ghostPad), 1);
-    LOG(INFO) << "Added ghost pad to bin=" << binName << " with pad=" << ghostPadName;
+    if (!gst_element_add_pad(bin, inputGhostPad))
+      LOG(FATAL) << "Could not add the ghostPad to bin=" << binName << ", ghostPadName=" << inputGhostPadName;
+    gst_object_unref(GST_OBJECT(inputBinPad));
+    gst_pad_set_active (GST_PAD_CAST (inputGhostPad), 1);
+    LOG(INFO) << "Added ghost pad to bin=" << binName << " with pad=" << inputGhostPadName;
+
+    // create ghost pad for each output pad (src)
+    std::string outputPadName = (std::string) "src_" + std::to_string(i);
+    GstPad *outputBinPad = gst_element_get_request_pad(nv_demux, outputPadName.c_str());
+    // Check if the pad was created.
+    if (outputBinPad == NULL)
+      LOG(FATAL) << "Could not get the nvstreammux request pad=" << inputPadName;
+
+    std::string outputGhostPadName = (std::string) "output" + std::to_string(i);
+    GstPad *outputGhostPad = gst_ghost_pad_new(outputGhostPadName.c_str(), outputBinPad);
+    if (outputGhostPad == NULL)
+      LOG(FATAL) << "Could not create the ghostPad for bin=" << binName << ", ghostPadName=" << outputGhostPadName;
+
+    if (!gst_element_add_pad(bin, outputGhostPad))
+      LOG(FATAL) << "Could not add the ghostPad to bin=" << binName << ", ghostPadName=" << outputGhostPadName;
+    gst_object_unref(GST_OBJECT(outputBinPad));
+    gst_pad_set_active (GST_PAD_CAST (outputGhostPad), 1);
+    LOG(INFO) << "Added ghost pad to bin=" << binName << " with pad=" << outputGhostPadName;
   }
   return bin;
 }
 
-inline GstElement* createInferenceBinToVideoDisplay(std::string binName, std::string inputPadName, int num_src)
+inline GstElement* createSinkBinToDisplay(std::string binName, std::string inputPadName)
 {
   // create bin
   GstElement* bin = gst_bin_new(binName.c_str());
   // create elements
-  GstElement *nvstreammux, *nvinfer, *nvtracker, *nvconvert, *queue, *sink;
-  nvstreammux = gst_element_factory_make("nvstreammux", "nv_mux");
-  g_object_set(nvstreammux,
-               "nvbuf-memory-type", 3,
-               "batch-size", 1,
-               "width", 1280,
-               "height", 720,
-               "batched-push-timeout", 40000,
-               "sync-inputs", false,
-               "live-source", false,
+  GstElement *sink_nvconvert, *sink_convert, *sink_caps, *sink_queue, *sink;
+  sink_nvconvert = gst_element_factory_make("nvvideoconvert", "sink_nvconvert");
+  g_object_set(sink_nvconvert,
+               "compute-hw", 1,
                NULL);
-  nvinfer = gst_element_factory_make("nvinfer", "nv_detection");
-  g_object_set(nvinfer,
-               "config-file-path","/src/configs/model/face_detection/detection_face.yml",
-               "batch-size", 1,
-               "qos", 1,
+  sink_convert = gst_element_factory_make("videoconvert", "sink_convert");
+  sink_caps = gst_element_factory_make("capsfilter", "sink_caps");
+  g_object_set(sink_caps,
+               "caps", gst_caps_from_string("video/x-raw,format=(string)YV12"),
                NULL);
-
-  nvtracker = gst_element_factory_make("nvtracker", "nv_tracker");
-  g_object_set(nvtracker,
-               "ll-config-file", "/src/configs/model/tracker.yml",
-               "ll-lib-file", "/opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so",
-               "enable-batch-process", 1,
-               "tracker-width", 640,
-               "tracker-height", 480,
-               NULL);
-  nvconvert = gst_element_factory_make("nvvideoconvert", "nv_convert");
-  queue = gst_element_factory_make("queue", "nv_queue");
-  sink = gst_element_factory_make("xvimagesink", "sink");
+  sink_queue = gst_element_factory_make("queue", "sink_queue");
+  sink = gst_element_factory_make("autovideosink", "sink");
   g_object_set(sink, "sync", true, NULL);
 
   // add elements to the bin
-  gst_bin_add_many(GST_BIN(bin), nvstreammux, nvinfer, nvtracker, nvconvert, queue, sink, NULL);
-  if(!gst_element_link_many(nvstreammux, nvinfer, nvtracker, nvconvert, queue, sink, NULL))
+  gst_bin_add_many(GST_BIN(bin), sink_nvconvert, sink_convert, sink_caps, sink_queue, sink, NULL);
+  if(!gst_element_link_many(sink_nvconvert, sink_convert, sink_caps, sink_queue, sink, NULL))
     LOG(FATAL) << "Failed to add elements to bin=" << binName;
 
   // create ghost pad at output for future linking
-  for (int i = 0; i < num_src; i++) {
-    std::string padName = (std::string) "sink_" + std::to_string(i);
-    GstPad *setSrcBinPad = gst_element_get_request_pad(nvstreammux, padName.c_str());
-    // Check if the pad was created.
-    if (setSrcBinPad == NULL)
-      LOG(FATAL) << "Could not get the nvstreammux request pad=" << padName;
+  GstPad *inputBinPad = gst_element_get_static_pad(sink_nvconvert, inputPadName.c_str());
+  // Check if the pad was created.
+  if (inputBinPad == NULL)
+    LOG(FATAL) << "Could not get the sink_convert static pad=" << inputPadName;
 
-    std::string ghostPadName = (std::string) "input" + std::to_string(i);
-    GstPad *ghostPad = gst_ghost_pad_new(ghostPadName.c_str(), setSrcBinPad);
-    if (ghostPad == NULL)
-      LOG(FATAL) << "Could not create the ghostPad for bin=" << binName << ", ghostPadName=" << ghostPadName;
+  std::string inputGhostPadName = "input0";
+  GstPad *inputGhostPad = gst_ghost_pad_new(inputGhostPadName.c_str(), inputBinPad);
+  if (inputGhostPad == NULL)
+    LOG(FATAL) << "Could not create the ghostPad for bin=" << binName << ", ghostPadName=" << inputGhostPadName;
 
-    if (!gst_element_add_pad(bin, ghostPad))
-      LOG(FATAL) << "Could not add the ghostPad to bin=" << binName << ", ghostPadName=" << ghostPadName;
-    gst_object_unref(GST_OBJECT(setSrcBinPad));
-    gst_pad_set_active (GST_PAD_CAST (ghostPad), 1);
-    LOG(INFO) << "Added ghost pad to bin=" << binName << " with pad=" << ghostPadName;
-  }
+  if (!gst_element_add_pad(bin, inputGhostPad))
+    LOG(FATAL) << "Could not add the ghostPad to bin=" << binName << ", ghostPadName=" << inputGhostPadName;
+  gst_object_unref(GST_OBJECT(inputBinPad));
+  gst_pad_set_active (GST_PAD_CAST (inputGhostPad), 1);
+  LOG(INFO) << "Added ghost pad to bin=" << binName << " with pad=" << inputGhostPadName;
   return bin;
 }
 

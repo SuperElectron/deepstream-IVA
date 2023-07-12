@@ -1,5 +1,13 @@
 #pragma once
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
+#include <glib.h>
+#include <gst/base/gstbasetransform.h>
+#include <gst/gst.h>
+#include <gst/video/video.h>
 
+#include "nvbufsurftransform.h"
 #include <gstnvdsmeta.h>
 
 #include <algorithm>
@@ -62,7 +70,6 @@ struct ProcessingSettings
 {
     std::string topic;
     std::string device_id;
-    std::string paired_device_id;
     std::string model;
     std::string model_type;
     bool publish;
@@ -70,6 +77,12 @@ struct ProcessingSettings
     int bbox_line_thickness;
     int min_confidence_to_display;
 	int font_size;
+};
+
+struct CbStore
+{
+    std::mutex *lock;
+    std::vector<std::queue<njson>*> *osd_data;
 };
 
 
@@ -93,8 +106,6 @@ struct VideoSourceData
 {
     // access protection between shared callbacks
     std::mutex *lock;
-    // counters for callbacks
-    guint frame_counter = 0;
     // data to be sent off-board via kafka consumer
     std::queue <njson> *meta_queue;
 };
@@ -117,10 +128,11 @@ class Processing : public BaseComponent
 public:
     Processing();
 
-    void set_up();
+    // class setup
+    void set_up(int source_count);
 
     /// PROCESSING METADATA
-    void probe_callback(GstBuffer *buf, int width, int height);
+    bool probe_callback(GstPad *pad, GstPadProbeInfo *info);
 
     /// MANAGING DATA FLOW
     njson get_meta_queue();
@@ -141,6 +153,9 @@ private:
     /// MANAGING DATA FLOW
     // processing container for each video source
     VideoSourceData _processor;
+    std::mutex _cb_lock = std::mutex();
+    std::vector<std::queue<njson>*> _cb_data;
+
     void _add_meta_queue(njson payload);
     void _create_kafka_publish_event();
 

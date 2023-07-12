@@ -13,7 +13,6 @@
 namespace processUtils
 {
 
-
 /**
  * @struct BoundingBox
  * @brief bounding box holder for IOU calculation

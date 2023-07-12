@@ -73,7 +73,7 @@ bool KafkaBroker::set_configs(njson conf)
     std::string topics_display;
     ProducerSettings producerSettings = {
         .topic = conf["producer"]["topic"].get<std::string>(),
-        .bootstrap = conf["producer"]["bootstrap"],
+        .kafka_server_ip = conf["producer"]["kafka_server_ip"],
     };
 
     KafkaSettings configs = {.producer = producerSettings};
@@ -94,11 +94,12 @@ void KafkaBroker::_validate_broker_connection()
 {
   this->_broker_connected = false;
   while (!this->_broker_connected) {
-    kafka::Properties props = json_props(this->_configs.producer.bootstrap);
+    kafka::Properties props;
+    props.put("bootstrap.servers", this->_configs.producer.kafka_server_ip);
     AdminClient adminClient(props);
     auto listResult = adminClient.listTopics();
     if (listResult.error) {
-      LOG(ERROR) << "Cannot connect to kafka server: (" << this->_configs.producer.bootstrap << ")" << listResult.error.message();
+      LOG(ERROR) << "Cannot connect to kafka server: (" << this->_configs.producer.kafka_server_ip << ")" << listResult.error.message();
       continue;
     }
     VLOG(DEBUG) << "Searching for available topics ";
@@ -144,7 +145,8 @@ void KafkaBroker::_poll_producer()
   this->_producer_run = true;
   VLOG(DEBUG) << "starting to poll";
   std::string send_topic;
-  kafka::Properties props = json_props(this->_configs.producer.bootstrap);
+  kafka::Properties props;
+  props.put("bootstrap.servers", this->_configs.producer.kafka_server_ip);
   KafkaProducer publisher(props);
   try {
     while (this->_producer_run) {

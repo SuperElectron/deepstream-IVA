@@ -36,7 +36,7 @@ class Mediator;
  */
 struct ProducerSettings {
   std::string topic;
-  njson bootstrap;
+  std::string kafka_server_ip;
 };
 
 /**

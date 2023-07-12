@@ -1,43 +1,32 @@
 {
   "messaging": {
-    "config_ref": "https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md",
-    "error_codes": "https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-ErrorCodes",
     "producer": {
-      "topic": "overlay-bbox",
-      "bootstrap": [
-        { "bootstrap.servers": "192.168.1.73:9092" }
-      ]
+      "topic": "my-topic",
+      "kafka_server_ip": "192.168.1.73:9092"
     }
   },
   "pipeline": {
-    "sources": [
+    "source": {
+      "type": "mp4",
+      "sources": [
         "/src/sample_videos/head-pose-face-detection-female.mp4",
         "/src/sample_videos/head-pose-face-detection-female.mp4",
         "/src/sample_videos/head-pose-face-detection-female.mp4",
         "/src/sample_videos/head-pose-face-detection-female.mp4"
-    ],
-    "inference": {
-      "config-file": "/src/configs/model/face_detection/detection_face.yml",
-      "batch-size": 1,
-      "qos": 1
-    },
-    "tracker": {
-      "config-file": "/src/configs/model/tracker.yml",
-      "lib-file": "/opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so",
-      "enable-batch-process": 1,
-      "tracker-width": 640,
-      "tracker-height": 480
+      ],
+      "input_width": 1280,
+      "input_height": 720
     }
   },
   "processing": {
     "topic": "my-topic",
     "device_id": "device-1000",
-    "model": "facenet",
+    "model": "model-name",
     "model_type": "FACE",
     "publish": true,
     "save": false,
     "bbox_line_thickness": 4,
-    "min_confidence_to_display": 5,
+    "min_confidence_to_display": 50,
     "font_size": 2
   }
 }

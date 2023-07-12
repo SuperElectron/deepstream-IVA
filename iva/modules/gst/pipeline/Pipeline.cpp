@@ -16,65 +16,11 @@ Pipeline::~Pipeline() {}
  */
 bool Pipeline::_set_up()
 {
-  this->processor->set_up();
+  this->processor->set_up(this->_configs.source_count);
   if (!this->_setup_pipeline_bus())
     return false;
   if(!this->_create_pipeline())
     return false;
-  return true;
-}
-
-
-bool Pipeline::_create_pipeline()
-{
-  // use configs to set pipeline
-
-
-  // create sourceBins
-  GstElement *srcBin = pipelineUtils::createMp4SrcBin("src0", "/src/sample_videos/head-pose-face-detection-female.mp4");
-//  GstElement *srcRight = pipelineUtils::createMp4SrcBin("srcRight", "/src/sample_videos/head-pose-face-detection-female.mp4");
-
-  // create inferenceBin
-  GstElement *inferenceBin = pipelineUtils::createInferenceBinToVideoDisplay("inferenceBin", "sink_", 1);
-
-  gst_bin_add_many(GST_BIN(this->pipeline), srcBin, inferenceBin, NULL);
-  // Add callbacks
-  GstElement *cb_element = gst_bin_get_by_name(GST_BIN(inferenceBin), "nv_tracker");
-  if(cb_element == NULL)
-    LOG(FATAL) << "Could not find nv_tracker in inferenceBin";
-
-  GstPad *probe_pad = gst_element_get_static_pad(cb_element, "src");
-  if(!gst_pad_add_probe(probe_pad, GST_PAD_PROBE_TYPE_BUFFER, core::GstCallbacks::probe_callback, (gpointer)this->processor, NULL))
-    LOG(FATAL) << "Could not add pad probe to nv_tracker";
-  gst_object_unref(probe_pad);
-
-  // set element state to READY
-  gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_NULL);
-  // create picture diagram of the pipeline in its current state
-  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL");
-
-  // link the srcLeft to disparityLeft and inferenceBin
-  GstPad* srcPad = gst_element_get_static_pad(srcBin, "output0");
-  GstPad* inferenceBinPad = gst_element_get_static_pad(inferenceBin, "input0");
-  if(srcPad == NULL)
-    LOG(FATAL) << "Could not get ghostPad from srcPad (output0)";
-  if(inferenceBinPad == NULL)
-    LOG(FATAL) << "Could not get ghostPad from inferenceBin (input0)";
-
-  int ret = gst_pad_link (srcPad, inferenceBinPad);
-  if (ret != GST_PAD_LINK_OK)
-  {
-    LOG(ERROR) << "LINK ERROR:\t" << pipelineUtils::get_link_status(ret);
-    LOG(FATAL) << "Could not link srcPad to inferenceBinPad";
-  }
-  gst_object_unref (srcPad);
-  gst_object_unref (inferenceBinPad);
-
-  // set element state to READY
-  gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_READY);
-  // create picture diagram of the pipeline in its current state
-  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL_READY");
-
   return true;
 }
 
@@ -92,12 +38,12 @@ bool Pipeline::set_configs(njson conf)
 
   try {
     // check that appropriate fields are included in the config.json file
-    njson src_list = conf["sources"];
     this->_configs = (PipelineConfigs){
-        .source_count = (unsigned int) conf["sources"].size(),
-        .sources = njson::array(),
-        .inference = conf["inference"],
-        .tracker = conf["tracker"]
+        .type = conf["source"]["type"].get<std::string>(),
+        .source_count = (int) conf["source"]["sources"].size(),
+        .sources = conf["source"]["sources"],
+        .img_height = conf["source"]["input_height"].get<int>(),
+        .img_width = conf["source"]["input_width"].get<int>(),
     };
   } catch (const std::exception &e) {
     LOG(ERROR) << "Error setting Kafka configs: " << e.what();
@@ -125,6 +71,128 @@ bool Pipeline::_setup_pipeline_bus()
   gst_object_unref(bus);
   return true;
 }
+
+/**
+ * @brief create gstreamer pipeline
+ * @return bool true if successful
+ */
+bool Pipeline::_create_pipeline()
+{
+  // use configs to create sourceBins and add them to the pipeline
+  if (this->_configs.type.compare("mp4") == 0) {
+    for(int b = 0; b < this->_configs.source_count; b++) {
+      std::string src_name = (std::string) "srcBin" + std::to_string(b);
+      std::string file_src = this->_configs.sources[b];
+      LOG(INFO) << "src_name=" << src_name << ", file_src=" << file_src;
+      GstElement *srcBin = pipelineUtils::createMp4SrcBin(src_name, file_src);
+      if(!gst_bin_add(GST_BIN(this->pipeline), srcBin))
+      {
+        LOG(ERROR) << "Failed to add srcBin[" << b << "] to pipeline";
+        return false;
+      }
+    }
+  }
+
+  // create inferenceBin and add it to the pipeline
+  GstElement *inferenceBin = pipelineUtils::createInferenceBinToStreamDemux("inferenceBin", this->_configs.source_count);
+  if(!gst_bin_add(GST_BIN(this->pipeline), inferenceBin))
+  {
+    LOG(ERROR) << "Failed to add inferenceBin to pipeline";
+    return false;
+  }
+
+  // create sink bin
+  for (int b=0; b < this->_configs.source_count; b++)
+  {
+    std::string binName = (std::string) "sinkBin" + std::to_string(b);
+    GstElement* sinkBin = pipelineUtils::createSinkBinToDisplay(binName, "sink");
+    if(!gst_bin_add(GST_BIN(this->pipeline), sinkBin))
+    {
+      LOG(ERROR) << "Failed to add sinkBin[" << b << "] to pipeline";
+      return false;
+    }
+    // add callbacks to display bounding boxes
+    GstElement *cb_element = gst_bin_get_by_name(GST_BIN(sinkBin), "sink_caps");
+    if(cb_element == NULL)
+      LOG(FATAL) << "Could not find sink_caps in sinkBin(" << b << ")";
+
+    GstPad *probe_pad = gst_element_get_static_pad(cb_element, "src");
+    if(!gst_pad_add_probe(probe_pad, GST_PAD_PROBE_TYPE_BUFFER, core::GstCallbacks::probe_callback, (gpointer)this->processor, NULL))
+      LOG(FATAL) << "Could not add pad probe to nv_tracker";
+    gst_object_unref(probe_pad);
+  }
+
+  // Add callbacks
+  GstElement *cb_element = gst_bin_get_by_name(GST_BIN(inferenceBin), "nv_tracker");
+  if(cb_element == NULL)
+    LOG(FATAL) << "Could not find nv_tracker in inferenceBin";
+  GstPad *probe_pad = gst_element_get_static_pad(cb_element, "src");
+  if(!gst_pad_add_probe(probe_pad, GST_PAD_PROBE_TYPE_BUFFER, core::GstCallbacks::probe_callback, (gpointer)this->processor, NULL))
+    LOG(FATAL) << "Could not add pad probe to nv_tracker";
+  gst_object_unref(probe_pad);
+
+  // set element state to NULL and save diagram
+  gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_NULL);
+  // create picture diagram of the pipeline in its current state
+  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL");
+
+  // link the source bins to inference bin
+  for (int b=0; b<this->_configs.source_count; b++)
+  {
+    std::string src_name = (std::string) "srcBin" + std::to_string(b);
+    GstElement *srcBin = gst_bin_get_by_name(GST_BIN(this->pipeline), src_name.c_str());
+    GstPad* srcPad = gst_element_get_static_pad(srcBin, "output0");
+    std::string inferenceBinPadName = (std::string) "input" + std::to_string(b);
+    GstPad* inferenceBinPad = gst_element_get_static_pad(inferenceBin, inferenceBinPadName.c_str());
+    if(srcPad == NULL)
+      LOG(FATAL) << "Could not get ghostPad from bin=" << src_name << " ,pad=output0";
+    if(inferenceBinPad == NULL)
+      LOG(FATAL) << "Could not get ghostPad from inferenceBin (pad=" << inferenceBinPadName << ")";
+
+    int ret = gst_pad_link (srcPad, inferenceBinPad);
+    if (ret != GST_PAD_LINK_OK)
+    {
+      LOG(ERROR) << "LINK ERROR:\t" << pipelineUtils::get_link_status(ret);
+      LOG(FATAL) << "Could not link srcPad to inferenceBinPad";
+    }
+    gst_object_unref (srcPad);
+    gst_object_unref (inferenceBinPad);
+  }
+
+  // link the inferenceBin to sinkBins
+  for (int b=0; b<this->_configs.source_count; b++)
+  {
+    // get the sinkBin and its input pad
+    std::string bin_name = (std::string) "sinkBin" + std::to_string(b);
+    GstElement *sinkBin = gst_bin_get_by_name(GST_BIN(this->pipeline), bin_name.c_str());
+    GstPad* sinkBinPad = gst_element_get_static_pad(sinkBin, "input0");
+
+    // get output pad from the inference bin
+    std::string inferenceBinPadName = (std::string) "output" + std::to_string(b);
+    GstPad* inferenceBinPad = gst_element_get_static_pad(inferenceBin, inferenceBinPadName.c_str());
+
+    if(sinkBinPad == NULL)
+      LOG(FATAL) << "Could not get ghostPad from bin=" << bin_name << " ,pad=input0";
+    if(inferenceBinPad == NULL)
+      LOG(FATAL) << "Could not get ghostPad from inferenceBin (pad=" << inferenceBinPadName << ")";
+
+    int ret = gst_pad_link (inferenceBinPad, sinkBinPad);
+    if (ret != GST_PAD_LINK_OK)
+    {
+      LOG(ERROR) << "LINK ERROR:\t" << pipelineUtils::get_link_status(ret);
+      LOG(FATAL) << "Could not link inferenceBinPad to sinkBinPad";
+    }
+    gst_object_unref (inferenceBinPad);
+    gst_object_unref (sinkBinPad);
+  }
+  // set element state to READY
+  gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_READY);
+  // create picture diagram of the pipeline in its current state
+  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL_READY");
+
+  return true;
+}
+
 
 /**
  * @brief runs the main gstreamer thread, g_main_loop_run, which is the main thread on the pipeline's lifecycle

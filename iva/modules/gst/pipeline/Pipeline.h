@@ -32,11 +32,13 @@ class Processing;
 class Event;
 
 struct PipelineConfigs {
-  unsigned int source_count = 1;
+  std::string type;
+  int source_count = 1;
   njson sources;
-  njson inference;
-  njson tracker;
+  int img_height;
+  int img_width;
 };
+
 /**
  * @class Pipeline
  * @brief derived from BaseComponent and responsible for running Gstreamer pipeline
@@ -72,7 +74,6 @@ class Pipeline : public BaseComponent {
  private:
   // config attributes
   PipelineConfigs _configs;
-  int _num_source_bins = 1;
 
   // pipeline attributes
   GMainLoop *loop = g_main_loop_new(NULL, FALSE);

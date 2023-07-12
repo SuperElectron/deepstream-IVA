@@ -29,41 +29,42 @@ using namespace processUtils;
 
 namespace core {
 
-inline cv::Mat getRGBFrame(GstMapInfo in_map_info, gint idx)
-{
+
+inline cv::Mat getRGBFrame(GstMapInfo in_map_info, gint idx) {
+
   // To access the frame
   NvBufSurface *surface = NULL;
   NvBufSurface surface_idx;
   NvBufSurfTransformRect src_rect, dst_rect;
 
-  surface = (NvBufSurface *)in_map_info.data;
+  surface = (NvBufSurface *) in_map_info.data;
   surface_idx = *surface;
   surface_idx.surfaceList = &(surface->surfaceList[idx]);
   surface_idx.numFilled = surface_idx.batchSize = 1;
 
   int batch_size = surface_idx.batchSize;
-  src_rect.top = 0;
-  src_rect.left = 0;
-  src_rect.width = (guint)surface->surfaceList[idx].width;
-  src_rect.height = (guint)surface->surfaceList[idx].height;
+  src_rect.top   = 0;
+  src_rect.left  = 0;
+  src_rect.width = (guint) surface->surfaceList[idx].width;
+  src_rect.height= (guint) surface->surfaceList[idx].height;
 
-  dst_rect.top = 0;
-  dst_rect.left = 0;
-  dst_rect.width = (guint)surface->surfaceList[idx].width;
-  dst_rect.height = (guint)surface->surfaceList[idx].height;
+  dst_rect.top   = 0;
+  dst_rect.left  = 0;
+  dst_rect.width = (guint) surface->surfaceList[idx].width;
+  dst_rect.height= (guint) surface->surfaceList[idx].height;
 
   NvBufSurfTransformParams nvbufsurface_params;
   nvbufsurface_params.src_rect = &src_rect;
   nvbufsurface_params.dst_rect = &dst_rect;
-  nvbufsurface_params.transform_flag = NVBUFSURF_TRANSFORM_CROP_SRC | NVBUFSURF_TRANSFORM_CROP_DST;
+  nvbufsurface_params.transform_flag =  NVBUFSURF_TRANSFORM_CROP_SRC | NVBUFSURF_TRANSFORM_CROP_DST;
   nvbufsurface_params.transform_filter = NvBufSurfTransformInter_Default;
 
   NvBufSurface *dst_surface = NULL;
   NvBufSurfaceCreateParams nvbufsurface_create_params;
 
-  nvbufsurface_create_params.gpuId = surface->gpuId;
-  nvbufsurface_create_params.width = (guint)surface->surfaceList[idx].width;
-  nvbufsurface_create_params.height = (guint)surface->surfaceList[idx].height;
+  nvbufsurface_create_params.gpuId  = surface->gpuId;
+  nvbufsurface_create_params.width  = (guint) surface->surfaceList[idx].width;
+  nvbufsurface_create_params.height = (guint) surface->surfaceList[idx].height;
   nvbufsurface_create_params.size = 0;
   // nvbufsurface_create_params.isContiguous = true;
   nvbufsurface_create_params.colorFormat = NVBUF_COLOR_FORMAT_RGBA;
@@ -71,50 +72,45 @@ inline cv::Mat getRGBFrame(GstMapInfo in_map_info, gint idx)
 
   // THE memType PARAM IS SET TO CUDA UNIFIED IN dGPU DEVICES COMMENT IT out
   // AND USE THE IMMEDIATE NEXT LINE TO SET THE memType PARAM FOR JETSON DEVICES
-
 #ifdef PLATFORM_TEGRA
+  LOG(WARNING) << "Setting nvbufsurface_create_params.memType = NVBUF_MEM_DEFAULT";
   nvbufsurface_create_params.memType = NVBUF_MEM_DEFAULT;
 #else
+  LOG(WARNING) << "Setting nvbufsurface_create_params.memType = NVBUF_MEM_CUDA_UNIFIED";
   nvbufsurface_create_params.memType = NVBUF_MEM_CUDA_UNIFIED;
 #endif
 
-  cudaError_t cuda_err = cudaSetDevice(surface->gpuId);
-
+  cudaError_t cuda_err = cudaSetDevice (surface->gpuId);
   cudaStream_t cuda_stream;
-
   cuda_err = cudaStreamCreate(&cuda_stream);
-
   int create_result = NvBufSurfaceCreate(&dst_surface, batch_size, &nvbufsurface_create_params);
 
   NvBufSurfTransformConfigParams transform_config_params;
-
   NvBufSurfTransform_Error err;
-
   transform_config_params.compute_mode = NvBufSurfTransformCompute_Default;
   transform_config_params.gpu_id = surface->gpuId;
   transform_config_params.cuda_stream = cuda_stream;
-  err = NvBufSurfTransformSetSessionParams(&transform_config_params);
+  err = NvBufSurfTransformSetSessionParams (&transform_config_params);
 
-  NvBufSurfaceMemSet(dst_surface, 0, 0, 0);
+  NvBufSurfaceMemSet (dst_surface, 0, 0, 0);
 
-  err = NvBufSurfTransform(&surface_idx, dst_surface, &nvbufsurface_params);
+  err = NvBufSurfTransform (&surface_idx, dst_surface, &nvbufsurface_params);
 
   if (err != NvBufSurfTransformError_Success) {
-    LOG(ERROR) << "NvBufSurfTransform failed with error while converting buffer: " << err;
+    g_print ("NvBufSurfTransform failed with error %d while converting buffer\n", err);
   }
 
-  NvBufSurfaceMap(dst_surface, 0, 0, NVBUF_MAP_READ);
-  NvBufSurfaceSyncForCpu(dst_surface, 0, 0);
+  NvBufSurfaceMap (dst_surface, 0, 0, NVBUF_MAP_READ);
+  NvBufSurfaceSyncForCpu (dst_surface, 0, 0);
 
-  cv::Mat bgr_frame = cv::Mat(cv::Size(nvbufsurface_create_params.width, nvbufsurface_create_params.height), CV_8UC3);
+  cv::Mat bgr_frame = cv::Mat (cv::Size(nvbufsurface_create_params.width, nvbufsurface_create_params.height), CV_8UC3);
 
-  cv::Mat in_mat = cv::Mat(nvbufsurface_create_params.height, nvbufsurface_create_params.width, CV_8UC4, dst_surface->surfaceList[0].mappedAddr.addr[0],
-                           dst_surface->surfaceList[0].pitch);
+  cv::Mat in_mat = cv::Mat (nvbufsurface_create_params.height, nvbufsurface_create_params.width, CV_8UC4, dst_surface->surfaceList[0].mappedAddr.addr[0], dst_surface->surfaceList[0].pitch);
 
-  cv::cvtColor(in_mat, bgr_frame, cv::COLOR_RGBA2BGR);
-  NvBufSurfaceUnMap(dst_surface, 0, 0);
+  cv::cvtColor (in_mat, bgr_frame, cv::COLOR_RGBA2BGR);
+  NvBufSurfaceUnMap(dst_surface, 0 , 0);
   NvBufSurfaceDestroy(dst_surface);
-  cudaStreamDestroy(cuda_stream);
+  cudaStreamDestroy (cuda_stream);
 
   return bgr_frame;
 }
@@ -145,36 +141,35 @@ inline GstPadProbeReturn probe_callback(GstPad *pad, GstPadProbeInfo *info, gpoi
 {
   // unpack pointer
   auto processor = (core::Processing *)u_data;
-
   // NvDS structures
-  GstBuffer *buf = (GstBuffer *)info->data;
+  bool ret = processor->probe_callback(pad, info);
+  if (!ret)
+    GST_PAD_PROBE_PASS;
 
-  // Needed to get image width and height
-  GstMapInfo in_map_info;
-  memset(&in_map_info, 0, sizeof(in_map_info));
-  /* Map the buffer contents and get the pointer to NvBufSurface. */
-  if (!gst_buffer_map(GST_BUFFER(info->data), &in_map_info, GST_MAP_READ)) {
-    LOG(ERROR) << "Error Failed to map gst buffer. Skipping";
-    return GST_PAD_PROBE_PASS;
-  }
-
-  // get width, height and format (e.g. video/x-raw) from GstBuffer
-  int width, height;
-  GstCaps *caps = gst_pad_get_current_caps(pad);
-  if (!caps)
-    caps = gst_pad_query_caps(pad, NULL);
-  GstStructure *s = gst_caps_get_structure(caps, 0);
-  bool res = gst_structure_get_int(s, "width", &width);
-  res |= gst_structure_get_int(s, "height", &height);
-  std::string video_format = (std::string)gst_structure_get_string(s, "format");
-  gst_caps_unref(caps);
-  if (!res)
-    LOG(FATAL) << "The pad doesn't have image dimensions!";
-  VLOG(DEBUG) << "GST_EVENT_CAPS (video_format=" << video_format << ",width=" << width << ",height=" << height << ")";
-
-  processor->probe_callback(buf, width, height);
   return GST_PAD_PROBE_OK;
 }
+
+/**
+ * @brief callback to write on display for element pad that has caps="video/x-raw,format=YV12"
+ *
+ * @param pad               the pad to which the callback is attached
+ * @param info              the data component of the gstreamer buffer
+ * @param u_data            user data pointer passed into the callback
+ * @return GstFlowReturn    return handle behaviour
+ */
+inline GstPadProbeReturn osd_callback(GstPad *pad, GstPadProbeInfo *info, gpointer u_data)
+{
+  // unpack pointer
+  auto processor = (core::Processing *)u_data;
+  // NvDS structures
+//  bool ret = processor->probe_callback(pad, info);
+//  if (!ret)
+//    GST_PAD_PROBE_PASS;
+
+  return GST_PAD_PROBE_OK;
+}
+
+
 
 /**
  * @brief callback to convert any buffer to image with openCV

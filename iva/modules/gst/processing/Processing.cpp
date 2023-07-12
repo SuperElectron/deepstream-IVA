@@ -48,15 +48,26 @@ bool Processing::set_configs(njson conf)
  * @brief creates a data structure for each stream (i.e. each video source) for use in callbacks
  *
  */
-void core::Processing::set_up()
+void core::Processing::set_up(int source_count)
 {
   this->_processor = (core::VideoSourceData){
       .lock = new std::mutex(),
-      .frame_counter = 0,
       .meta_queue = new std::queue<njson>()};
 
-  VLOG(DEBUG) << "Done store set up (frames_counter=" << this->_processor.frame_counter << ")";
+  // instantiate callback data (for each stream)
+  this->_cb_lock.lock();
+  this->_cb_data.resize(source_count);
+  for (int q=0; q< source_count; q++)
+  {
+    this->_cb_data[q] = new std::queue<njson>();
+  }
+  this->_cb_lock.unlock();
+
+  LOG(INFO) << "Set up CBstore:  size=" << this->_cb_data.size();
+
+  LOG(INFO) << "Setting up the cb_stores for sources=(" << source_count << ")";
 }
+
 
 /// PROCESSING CALLBACKS TO UNPACK GSTREAMER BUFFER
 
@@ -64,12 +75,34 @@ void core::Processing::set_up()
  * @brief extracts metadata from src pad of NvInfer, NvTracker, or NvDsOSD elements and creates a kafka payload with its items
  * @copydoc configure the application config (/src/configs/config.json) fields processing['save'] to save images and processing['publish'] to publish results
  * with kafka
- * @param buf the GstBuffer
- * @param frame_width dimension of the frame from GstBuffer caps
- * @param frame_height dimension of the frame from GstBuffer caps
+ * @param *info the GstBuffer wrapped when taken from Probe callback on a pad
  */
-void core::Processing::probe_callback(GstBuffer *buf, int frame_width, int frame_height)
+bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
 {
+  GstBuffer *buf = (GstBuffer *)info->data;
+  // Needed to get image width and height
+  GstMapInfo in_map_info;
+  memset(&in_map_info, 0, sizeof(in_map_info));
+  /* Map the buffer contents and get the pointer to NvBufSurface. */
+  if (!gst_buffer_map(GST_BUFFER(info->data), &in_map_info, GST_MAP_READWRITE)) {
+    LOG(ERROR) << "Error Failed to map gst buffer. Skipping";
+    return false;
+  }
+
+  // get width, height and format (e.g. video/x-raw) from GstBuffer
+  int width, height;
+  GstCaps *caps = gst_pad_get_current_caps(pad);
+  if (!caps)
+    caps = gst_pad_query_caps(pad, NULL);
+  GstStructure *s = gst_caps_get_structure(caps, 0);
+  bool res = gst_structure_get_int(s, "width", &width);
+  res |= gst_structure_get_int(s, "height", &height);
+  std::string video_format = (std::string)gst_structure_get_string(s, "format");
+  gst_caps_unref(caps);
+  if (!res)
+    LOG(FATAL) << "The pad doesn't have image dimensions!";
+  VLOG(DEBUG) << "GST_EVENT_CAPS (video_format=" << video_format << ",width=" << width << ",height=" << height << ")";
+
   njson payload;
 
   NvDsMetaList *frame_list = NULL;
@@ -92,8 +125,8 @@ void core::Processing::probe_callback(GstBuffer *buf, int frame_width, int frame
     payload["meta"]["model"] = this->_configs.model;
     payload["meta"]["detection_type"] = this->_configs.model_type;
     payload["meta"]["uuid"] = processUtils::generate_uuid();
-    payload["meta"]["resolution"]["height"] = frame_height;
-    payload["meta"]["resolution"]["width"] = frame_width;
+    payload["meta"]["resolution"]["height"] = height;
+    payload["meta"]["resolution"]["width"] = width;
 
     // loop through detected objects
     int objects_detected = 0;
@@ -133,9 +166,14 @@ void core::Processing::probe_callback(GstBuffer *buf, int frame_width, int frame
       payload["inference"][objects_detected]["tracking_id"] = obj_meta->object_id;
       payload["inference"][objects_detected]["camera_id"] = frame_meta->source_id;
 
-      // TODO: add write detected objects to screen, pass image in callback
-//      std::string display_text = (std::string) "[" + std::to_string(obj_meta->object_id) + (std::string) "] " + std::to_string(int(confidence));
-//      this->_write_detections_to_image(frame, payload["inference"][objects_detected], display_text);
+      try{
+        this->_cb_data[(int)frame_meta->source_id]->push(payload);
+      } catch (const std::exception &e) {
+        LOG(ERROR) << "Error adding to queue: " << e.what();
+      }
+
+//      queue.push(payload);
+//      this->_cb_data.osd_data[frame_meta->source_id].push(payload);
     }
     // parse next stream_id
   }
@@ -154,6 +192,7 @@ void core::Processing::probe_callback(GstBuffer *buf, int frame_width, int frame
       o << std::setw(4) << payload << std::endl;
     }
   }
+  return true;
 };
 
 /**
@@ -188,7 +227,6 @@ void core::Processing::_write_detections_to_image(cv::Mat frame, njson detection
         cv::LINE_AA
     );
   }
-
 }
 
 /// MANAGING DATA FLOW
