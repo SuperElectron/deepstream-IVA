@@ -23,6 +23,7 @@ cd /tmp && \
   curl -OL "https://archive.apache.org/dist/kafka/${KAFKA_VERSION}/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz" && \
   tar -zxvf kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz && \
   mv kafka_${SCALA_VERSION}-${KAFKA_VERSION} kafka && \
+  rm -rf kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz && \
   mv kafka /opt/
 
 echo "${NAME} Set up logging "

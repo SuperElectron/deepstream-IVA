@@ -127,11 +127,13 @@ start_kafkacat:
 	    -u 0 \
 	    $(KAFKACAT_MODULE) bash -c "sleep infinity"
 start_kafka:
-	docker run --name $(KAFKA_MODULE) \
+	docker run -it --name $(KAFKA_MODULE) \
 		--privileged \
 		--net=host \
+		-v $(DOCKER_DIR)/kafka/configs/kafka-server-SSL.properties:/opt/kafka/config/server.properties \
+		-v $(PROJECT_DIR)/.cache:/tmp \
 		-w /opt/kafka \
-		$(KAFKA_MODULE):latest
+		$(KAFKA_MODULE):latest bash
 
 # RUN EXECUTIVE COMMAND IN DOCKER CONTAINER (open bash terminal, run program, ... etc)
 enter:

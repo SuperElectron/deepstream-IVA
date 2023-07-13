@@ -35,7 +35,11 @@ RUN chmod +x /etc/supervisor/conf.d/supervisord.conf
 RUN /start/scripts/install_kafka.sh
 COPY configs/kafka-server.properties /opt/kafka/config/server.properties
 COPY configs/zookeeper.properties /opt/kafka/config/zookeeper.properties
-RUN /start/scripts/update_configs.sh -k ${KAFKA_BROKER} -m 10000 -t 1000
+#RUN /start/scripts/update_configs.sh -k ${KAFKA_BROKER} -m 10000 -t 1000
+
+# copy certs
+COPY configs/certs /tmp/certs
+RUN chmod 777 /tmp/certs
 
 # clean up downloaded apt packages in container
 RUN rm -rf /var/lib/apt/lists/*
