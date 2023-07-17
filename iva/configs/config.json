@@ -2,21 +2,28 @@
   "messaging": {
     "producer": {
       "topic": "my-topic",
-      "kafka_server_ip": "192.168.1.73:9092"
+      "kafka_server_ip": "192.168.1.71:9092"
     }
   },
   "pipeline": {
-    "source": {
-      "type": "mp4",
-      "sources": [
-        "/src/sample_videos/head-pose-face-detection-female.mp4",
-        "/src/sample_videos/head-pose-face-detection-female.mp4",
-        "/src/sample_videos/head-pose-face-detection-female.mp4",
-        "/src/sample_videos/head-pose-face-detection-female.mp4"
-      ],
-      "input_width": 1280,
-      "input_height": 720
-    }
+    "src_type": "mp4",
+    "sink_type": "rtmp",
+    "sources": [
+      "/src/sample_videos/head-pose-face-detection-female.mp4",
+      "/src/sample_videos/head-pose-face-detection-female.mp4",
+      "/src/sample_videos/head-pose-face-detection-female.mp4",
+      "/src/sample_videos/head-pose-face-detection-female.mp4"
+    ],
+    "sinks": [
+      "rtmp://0.0.0.0:8554/test1",
+      "rtmp://0.0.0.0:8554/test2",
+      "rtmp://0.0.0.0:8554/test3",
+      "rtmp://0.0.0.0:8554/test4"
+    ],
+    "input_width": 1280,
+    "input_height": 720,
+    "live_source": false,
+    "sync": true
   },
   "processing": {
     "topic": "my-topic",

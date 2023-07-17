@@ -32,11 +32,15 @@ class Processing;
 class Event;
 
 struct PipelineConfigs {
-  std::string type;
+  std::string src_type;
+  std::string sink_type;
   int source_count = 1;
   njson sources;
+  njson sinks;
   int img_height;
   int img_width;
+  bool live_source;
+  bool sync;
 };
 
 /**

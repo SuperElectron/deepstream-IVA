@@ -39,11 +39,15 @@ bool Pipeline::set_configs(njson conf)
   try {
     // check that appropriate fields are included in the config.json file
     this->_configs = (PipelineConfigs){
-        .type = conf["source"]["type"].get<std::string>(),
-        .source_count = (int) conf["source"]["sources"].size(),
-        .sources = conf["source"]["sources"],
-        .img_height = conf["source"]["input_height"].get<int>(),
-        .img_width = conf["source"]["input_width"].get<int>(),
+        .src_type = conf["src_type"].get<std::string>(),
+        .sink_type = conf["sink_type"].get<std::string>(),
+        .source_count = (int) conf["sources"].size(),
+        .sources = conf["sources"],
+        .sinks = conf["sinks"],
+        .img_height = conf["input_height"].get<int>(),
+        .img_width = conf["input_width"].get<int>(),
+        .live_source = conf["live_source"].get<bool>(),
+        .sync = conf["sync"].get<bool>()
     };
   } catch (const std::exception &e) {
     LOG(ERROR) << "Error setting Kafka configs: " << e.what();
@@ -79,7 +83,7 @@ bool Pipeline::_setup_pipeline_bus()
 bool Pipeline::_create_pipeline()
 {
   // use configs to create sourceBins and add them to the pipeline
-  if (this->_configs.type.compare("mp4") == 0) {
+  if (this->_configs.src_type.compare("mp4") == 0) {
     for(int b = 0; b < this->_configs.source_count; b++) {
       std::string src_name = (std::string) "srcBin" + std::to_string(b);
       std::string file_src = this->_configs.sources[b];
@@ -91,10 +95,36 @@ bool Pipeline::_create_pipeline()
         return false;
       }
     }
+  } else if (this->_configs.src_type.compare("rtsp") == 0) {
+    for(int b = 0; b < this->_configs.source_count; b++) {
+      std::string src_name = (std::string) "srcBin" + std::to_string(b);
+      std::string uri = this->_configs.sources[b];
+      LOG(INFO) << "src_name=" << src_name << ", uri=" << uri;
+      GstElement *srcBin = pipelineUtils::createRtspSrcBin(src_name, uri);
+      if(!gst_bin_add(GST_BIN(this->pipeline), srcBin))
+      {
+        LOG(ERROR) << "Failed to add srcBin[" << b << "] to pipeline";
+        return false;
+      }
+    }
+  } else if (this->_configs.src_type.compare("v4l2") == 0) {
+    for(int b = 0; b < this->_configs.source_count; b++) {
+      std::string src_name = (std::string) "srcBin" + std::to_string(b);
+      std::string deviceId = this->_configs.sources[b];
+      LOG(INFO) << "src_name=" << src_name << ", deviceId=" << deviceId;
+      GstElement *srcBin = pipelineUtils::createV4l2SrcBin(src_name, deviceId);
+      if(!gst_bin_add(GST_BIN(this->pipeline), srcBin))
+      {
+        LOG(ERROR) << "Failed to add srcBin[" << b << "] to pipeline";
+        return false;
+      }
+    }
+  } else {
+    LOG(FATAL) << "Type of source has not been configured";
   }
 
   // create inferenceBin and add it to the pipeline
-  GstElement *inferenceBin = pipelineUtils::createInferenceBinToStreamDemux("inferenceBin", this->_configs.source_count);
+  GstElement *inferenceBin = pipelineUtils::createInferenceBinToStreamDemux("inferenceBin", this->_configs.source_count, this->_configs.img_width, this->_configs.img_height, this->_configs.live_source);
   if(!gst_bin_add(GST_BIN(this->pipeline), inferenceBin))
   {
     LOG(ERROR) << "Failed to add inferenceBin to pipeline";
@@ -102,25 +132,50 @@ bool Pipeline::_create_pipeline()
   }
 
   // create sink bin
-  for (int b=0; b < this->_configs.source_count; b++)
+  if (this->_configs.sink_type.compare("display") == 0)
   {
-    std::string binName = (std::string) "sinkBin" + std::to_string(b);
-    GstElement* sinkBin = pipelineUtils::createSinkBinToDisplay(binName, "sink");
-    if(!gst_bin_add(GST_BIN(this->pipeline), sinkBin))
-    {
-      LOG(ERROR) << "Failed to add sinkBin[" << b << "] to pipeline";
-      return false;
+    for (int b=0; b < this->_configs.source_count; b++) {
+      std::string binName = (std::string) "sinkBin" + std::to_string(b);
+      GstElement* sinkBin = pipelineUtils::createSinkBinToDisplay(binName, this->_configs.sync);
+      if(!gst_bin_add(GST_BIN(this->pipeline), sinkBin))
+      {
+        LOG(ERROR) << "Failed to add sinkBin[" << b << "] to pipeline";
+        return false;
+      }
+
+      // add callbacks to display bounding boxes
+      GstElement *cb_element = gst_bin_get_by_name(GST_BIN(sinkBin), "sink_caps");
+      if(cb_element == NULL)
+        LOG(FATAL) << "Could not find sink_caps in sinkBin(" << b << ")";
+
+      GstPad *probe_pad = gst_element_get_static_pad(cb_element, "src");
+      if(!gst_pad_add_probe(probe_pad, GST_PAD_PROBE_TYPE_BUFFER, core::GstCallbacks::osd_callback, (gpointer)this->processor, NULL))
+        LOG(FATAL) << "Could not add pad probe to sink_caps";
+      gst_object_unref(probe_pad);
     }
+  } else if (this->_configs.sink_type.compare("rtmp") == 0) {
+    for (int b=0; b < this->_configs.source_count; b++) {
+      std::string binName = (std::string) "sinkBin" + std::to_string(b);
+      GstElement* sinkBin = pipelineUtils::createSinkBinToRTMP(binName, this->_configs.sinks[b], this->_configs.sync);
+      if(!gst_bin_add(GST_BIN(this->pipeline), sinkBin))
+      {
+        LOG(ERROR) << "Failed to add sinkBin[" << b << "] to pipeline";
+        return false;
+      }
 
-    // add callbacks to display bounding boxes
-    GstElement *cb_element = gst_bin_get_by_name(GST_BIN(sinkBin), "sink_caps");
-    if(cb_element == NULL)
-      LOG(FATAL) << "Could not find sink_caps in sinkBin(" << b << ")";
+      // add callbacks to display bounding boxes
+      GstElement *cb_element = gst_bin_get_by_name(GST_BIN(sinkBin), "sink_caps");
+      if(cb_element == NULL)
+        LOG(FATAL) << "Could not find sink_caps in sinkBin(" << b << ")";
 
-    GstPad *probe_pad = gst_element_get_static_pad(cb_element, "src");
-    if(!gst_pad_add_probe(probe_pad, GST_PAD_PROBE_TYPE_BUFFER, core::GstCallbacks::osd_callback, (gpointer)this->processor, NULL))
-      LOG(FATAL) << "Could not add pad probe to sink_caps";
-    gst_object_unref(probe_pad);
+      GstPad *probe_pad = gst_element_get_static_pad(cb_element, "src");
+      if(!gst_pad_add_probe(probe_pad, GST_PAD_PROBE_TYPE_BUFFER, core::GstCallbacks::osd_callback, (gpointer)this->processor, NULL))
+        LOG(FATAL) << "Could not add pad probe to sink_caps";
+      gst_object_unref(probe_pad);
+    }
+  }
+  else {
+    LOG(FATAL) << "Invalid sink type";
   }
 
   // Add callbacks
@@ -231,10 +286,9 @@ void Pipeline::start()
 {
   LOG(INFO) << "Starting module";
 
-  if (!this->_set_up()) {
-    LOG(WARNING) << "Could not set up the pipeline module";
-    throw -1;
-  }
+  if (!this->_set_up())
+    LOG(FATAL) << "Could not set up the pipeline module";
+
   this->_pool.push_task(&Pipeline::_run_pipeline, this);
 }
 

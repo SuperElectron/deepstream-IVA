@@ -161,10 +161,8 @@ inline void save_debug_dot(GstElement *pipeline, std::string log_dir, std::strin
   std::string log_file_base, log_dot, log_png, pipeline_name;
 
   get_element_name(pipeline, pipeline_name);
-  if (pipeline_name.empty()) {
-    LOG(ERROR) << log_prefix << "Pipeline must have a name! pipeline_name=(" << pipeline_name;
-    throw -1;
-  }
+  if (pipeline_name.empty())
+    LOG(FATAL) << log_prefix << "Pipeline must have a name! pipeline_name=(" << pipeline_name;
 
   // set paths and filename
   log_file_base = log_dir + "/gst_debug_dot/" + pipeline_name + "." + state_name;
@@ -190,8 +188,7 @@ inline void save_debug_dot(GstElement *pipeline, std::string log_dir, std::strin
     fs::permissions(log_png, fs::perms::all);
   }
   catch (const std::exception &e) {
-    LOG(ERROR) << log_prefix << "Could not create dot file\n\t -- log_file=(" << log_dot << ")\n\t -- ERROR \n\t" << e.what();
-    throw -1;
+    LOG(FATAL) << log_prefix << "Could not create dot file\n\t -- log_file=(" << log_dot << ")\n\t -- ERROR \n\t" << e.what();
   }
   LOG(INFO) << log_prefix << "Created GST_DEBUG_DUMP_DOT_DIR file: " << log_png;
 }
@@ -263,7 +260,7 @@ inline GstElement* createMp4SrcBin(std::string binName, std::string filesrcLocat
 	// create bin
 	GstElement* bin = gst_bin_new(binName.c_str());
 	// create elements
-	GstElement *filesrc, *qtdemux, *h264parse, *nvv4l2decoder, *queue, *tee;
+	GstElement *filesrc, *qtdemux, *h264parse, *nvv4l2decoder, *queue;
 	filesrc = gst_element_factory_make("filesrc", "source");
 	qtdemux = gst_element_factory_make("qtdemux", "src_demux");
 	h264parse = gst_element_factory_make("h264parse", "src_parser");
@@ -301,7 +298,7 @@ inline GstElement* createV4l2SrcBin(std::string binName, std::string deviceId)
 	// create bin
 	GstElement* bin = gst_bin_new(binName.c_str());
 	// create elements
-	GstElement *source, *source_queue, *src_rate, *src_scale, *src_conv, *src_caps, *src_decoder, *src_queue, *tee;
+	GstElement *source, *source_queue, *src_rate, *src_scale, *src_conv, *src_caps, *src_decoder, *src_queue;
 	source = gst_element_factory_make("v4l2src", "source");
 	g_object_set(G_OBJECT(source),"device", deviceId.c_str(), NULL);
 	source_queue = gst_element_factory_make("queue", "source_queue");
@@ -320,11 +317,11 @@ inline GstElement* createV4l2SrcBin(std::string binName, std::string deviceId)
 	if(gst_element_link_many(source, source_queue, src_rate, src_scale, src_conv, src_caps, src_decoder, src_queue, NULL) != TRUE)
 		LOG(FATAL) << "Failed to link many elements in bin=" << binName << ": Elements=(v4l2src, queue, videorate, videoscale, videoconvert, capsfilter, nvvideoconvert, queue)";
 
-	// create ghost pad at output for future linking on tee pad (src_%u)
+	// create ghost pad at output for future linking on queue pad (src)
 	int num_pads = 0;
 	// Add ghost pads to access src_0 in bin
 	std::string ghostPadName = (std::string) "output" + std::to_string(num_pads);
-	std::string padName = (std::string) "src_" + std::to_string(num_pads);
+	std::string padName = (std::string) "src";
 	GstPad* binPad0 = gst_element_get_static_pad(src_queue, padName.c_str());
 	if(!gst_element_add_pad(bin, gst_ghost_pad_new(ghostPadName.c_str(), binPad0)))
 		LOG(FATAL) << "Could not add the ghostPad to the bin=" << binName << ", pad=" << ghostPadName;
@@ -334,7 +331,41 @@ inline GstElement* createV4l2SrcBin(std::string binName, std::string deviceId)
 	return bin;
 }
 
-inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_src)
+inline GstElement* createRtspSrcBin(std::string binName, std::string rtsp_url)
+{
+    // create bin
+    GstElement* bin = gst_bin_new(binName.c_str());
+    // create elements
+    GstElement *source, *source_depay, *src_parse, *src_decoder, *src_queue;
+    source = gst_element_factory_make("rtspsrc", "source");
+    g_object_set(G_OBJECT(source),"location", rtsp_url.c_str(), NULL);
+    source_depay = gst_element_factory_make("rtph264depay", "source_depay");
+    src_parse = gst_element_factory_make("h264parse", "src_parse");
+    src_decoder = gst_element_factory_make("nvvideoconvert", "src_decoder");
+    src_queue = gst_element_factory_make("queue", "src_queue");
+
+    // add elements to the bin
+    gst_bin_add_many(GST_BIN(bin), source, source_depay, src_parse, src_decoder, src_queue, NULL);
+
+    // link elements
+    if(gst_element_link_many(source, source_depay, src_parse, src_decoder, src_queue, NULL) != TRUE)
+        LOG(FATAL) << "Failed to link many elements in bin=" << binName << ": Elements=(source, source_depay, src_parse, src_decoder, src_queue)";
+
+    // create ghost pad at output for future linking on queue pad (src)
+    int num_pads = 0;
+    // Add ghost pads to access src_0 in bin
+    std::string ghostPadName = (std::string) "output" + std::to_string(num_pads);
+    std::string padName = (std::string) "src";
+    GstPad* binPad0 = gst_element_get_static_pad(src_queue, padName.c_str());
+    if(!gst_element_add_pad(bin, gst_ghost_pad_new(ghostPadName.c_str(), binPad0)))
+        LOG(FATAL) << "Could not add the ghostPad to the bin=" << binName << ", pad=" << ghostPadName;
+    gst_pad_set_active (GST_PAD_CAST (binPad0), 1);
+    gst_object_unref(GST_OBJECT(binPad0));
+    VLOG(DEBUG) << "Added ghost pad to bin=" << binName << " with pad=" << ghostPadName;
+    return bin;
+}
+
+inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_src, int width, int height, bool live_source)
 {
   // create bin
   GstElement* bin = gst_bin_new(binName.c_str());
@@ -342,22 +373,14 @@ inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_
   GstElement *nv_mux, *nv_infer, *nv_tracker, *nv_convert, *nv_demux;
   nv_mux = gst_element_factory_make("nvstreammux", "nv_mux");
 
-  int memory_type = 0;
-#ifdef PLATFORM_TEGRA
-  memory_type = 3;
-#else
-  memory_type = 0;
-#endif
-  VLOG(DEBUG) << "Setting nvbuf-memory-type=" << memory_type;
-
   g_object_set(nv_mux,
-               "nvbuf-memory-type", memory_type,
+               "nvbuf-memory-type", 0,
                "batch-size", num_src,
-               "width", 1280,
-               "height", 720,
+               "width", width,
+               "height", height,
                "batched-push-timeout", 40000,
                "sync-inputs", false,
-               "live-source", false,
+               "live-source", live_source,
                NULL);
   nv_infer = gst_element_factory_make("nvinfer", "nv_detection");
   g_object_set(nv_infer,
@@ -423,8 +446,7 @@ inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_
   return bin;
 }
 
-inline GstElement* createSinkBinToDisplay(std::string binName, std::string inputPadName)
-{
+inline GstElement* createSinkBinToDisplay(std::string binName, bool sync) {
   // create bin
   GstElement* bin = gst_bin_new(binName.c_str());
   // create elements
@@ -440,7 +462,7 @@ inline GstElement* createSinkBinToDisplay(std::string binName, std::string input
                NULL);
   sink_queue = gst_element_factory_make("queue", "sink_queue");
   sink = gst_element_factory_make("xvimagesink", "sink");
-  g_object_set(sink, "sync", false, NULL);
+  g_object_set(sink, "sync", sync, NULL);
   g_object_set(sink, "async", true, NULL);
 
   // add elements to the bin
@@ -449,6 +471,58 @@ inline GstElement* createSinkBinToDisplay(std::string binName, std::string input
     LOG(FATAL) << "Failed to add elements to bin=" << binName;
 
   // create ghost pad at output for future linking
+  std::string inputPadName = "sink";
+  GstPad *inputBinPad = gst_element_get_static_pad(sink_nvconvert, inputPadName.c_str());
+  // Check if the pad was created.
+  if (inputBinPad == NULL)
+    LOG(FATAL) << "Could not get the sink_convert static pad=" << inputPadName;
+
+  std::string inputGhostPadName = "input0";
+  GstPad *inputGhostPad = gst_ghost_pad_new(inputGhostPadName.c_str(), inputBinPad);
+  if (inputGhostPad == NULL)
+    LOG(FATAL) << "Could not create the ghostPad for bin=" << binName << ", ghostPadName=" << inputGhostPadName;
+
+  if (!gst_element_add_pad(bin, inputGhostPad))
+    LOG(FATAL) << "Could not add the ghostPad to bin=" << binName << ", ghostPadName=" << inputGhostPadName;
+  gst_object_unref(GST_OBJECT(inputBinPad));
+  gst_pad_set_active (GST_PAD_CAST (inputGhostPad), 1);
+  VLOG(DEBUG) << "Added ghost pad to bin=" << binName << " with pad=" << inputGhostPadName;
+  return bin;
+}
+
+inline GstElement* createSinkBinToRTMP(std::string binName, std::string uri, bool sync) {
+  // create bin
+  GstElement* bin = gst_bin_new(binName.c_str());
+  // create elements
+  GstElement *sink_nvconvert, *sink_convert, *sink_caps, *sink_encode, *sink_mux, *sink_queue, *sink;
+  sink_nvconvert = gst_element_factory_make("nvvideoconvert", "sink_nvconvert");
+  g_object_set(sink_nvconvert,
+               "compute-hw", 1,
+               NULL);
+  sink_convert = gst_element_factory_make("videoconvert", "sink_convert");
+  sink_caps = gst_element_factory_make("capsfilter", "sink_caps");
+  g_object_set(sink_caps,
+               "caps", gst_caps_from_string("video/x-raw,format=(string)YV12"),
+               NULL);
+  sink_encode = gst_element_factory_make("x264enc", "sink_encode");
+  sink_mux = gst_element_factory_make("flvmux", "sink_mux");
+
+  sink_queue = gst_element_factory_make("queue", "sink_queue");
+  sink = gst_element_factory_make("rtmpsink", "sink");
+  LOG(WARNING) << "Setting RTMP uri:" << uri;
+  g_object_set(sink,
+               "sync", sync,
+               "async", true,
+               "location", uri.c_str(),
+               NULL);
+
+  // add elements to the bin
+  gst_bin_add_many(GST_BIN(bin), sink_nvconvert, sink_convert, sink_caps, sink_encode, sink_mux, sink_queue, sink, NULL);
+  if(!gst_element_link_many(sink_nvconvert, sink_convert, sink_caps, sink_encode, sink_mux, sink_queue, sink, NULL))
+    LOG(FATAL) << "Failed to add elements to bin=" << binName;
+
+  // create ghost pad at output for future linking
+  std::string inputPadName = "sink";
   GstPad *inputBinPad = gst_element_get_static_pad(sink_nvconvert, inputPadName.c_str());
   // Check if the pad was created.
   if (inputBinPad == NULL)
