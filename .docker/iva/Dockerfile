@@ -2,7 +2,7 @@
 ARG DOCKER_BASE
 FROM nvcr.io/nvidia/deepstream$DOCKER_BASE:6.1.1-samples
 
-LABEL maintainer="FocusBug <matmccann@gmail.com>"
+LABEL maintainer="AlphaWise <matmccann@gmail.com>"
 
 # Set Nvidia capabilities environment variables
 ENV NVIDIA_DRIVER_CAPABILITIES all
@@ -32,16 +32,10 @@ RUN cd /start/scripts && ./install.sh
 RUN cd /start/scripts && ./install_messaging.sh
 RUN cd /start/scripts && ./install_cudart.sh
 RUN --mount=type=cache,target=/var/cache/apt apt-get install -y cuda
-#RUN cd /start/scripts && ./install_opencv.sh
 # clean up downloaded packages
 RUN rm -rf /var/lib/apt/lists/*
 RUN rm -rf ~/.cache/gstreamer-1.0/registry.*.bin && apt-get update -yqq
 
-## TODO: udpate to work on dGPU and Jetson
-#RUN update-alternatives --remove cuda /usr/local/cuda-11.7
-#RUN update-alternatives --remove cuda /usr/local/cuda-12.1
-#RUN update-alternatives --remove cuda /usr/local/cuda-12.2
-#RUN update-alternatives --install /usr/local/cuda cuda /usr/local/cuda-11.7 1
 RUN cp /usr/local/cuda/targets/x86_64-linux/lib/libcudart.so /opt/nvidia/deepstream/deepstream/lib/libcudart.so
 
 # Command executed for container spin up ( docker-compose, docker run)
