@@ -2,12 +2,13 @@
   "messaging": {
     "producer": {
       "topic": "my-topic",
-      "kafka_server_ip": "192.168.1.71:9092"
+      "kafka_server_ip": "192.168.1.73:9092"
     }
   },
   "pipeline": {
-    "src_type": "mp4",
-    "sink_type": "rtmp",
+    "configs": "/src/configs/pipeline/facial.yml",
+    "src_type": "yaml",
+    "sink_type": "display",
     "sources": [
       "/src/sample_videos/head-pose-face-detection-female.mp4",
       "/src/sample_videos/head-pose-face-detection-female.mp4",

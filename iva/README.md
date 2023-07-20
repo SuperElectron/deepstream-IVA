@@ -78,7 +78,7 @@ __configs__
     }
   },
   "pipeline": {                                       // properties /src/modules/gst/pipeline
-    "config_file": "/src/configs/writeSpyder_display.yml"        // pipeline configuration file describing gstreamer elements
+    "config_file": "/src/configs/nvds.yml"        // pipeline configuration file describing gstreamer elements
   },
   "processing": {                                     // properties /src/modules/gst/processing
       "topic": "overlay-bbox",                              // extract metadata and produce to this topic 

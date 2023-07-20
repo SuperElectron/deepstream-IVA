@@ -133,7 +133,7 @@ start_kafka:
 		-v $(DOCKER_DIR)/kafka/configs/kafka-server-SSL.properties:/opt/kafka/config/server.properties \
 		-v $(PROJECT_DIR)/.cache:/tmp \
 		-w /opt/kafka \
-		$(KAFKA_MODULE):latest bash
+		$(KAFKA_MODULE)
 
 # RUN EXECUTIVE COMMAND IN DOCKER CONTAINER (open bash terminal, run program, ... etc)
 enter:

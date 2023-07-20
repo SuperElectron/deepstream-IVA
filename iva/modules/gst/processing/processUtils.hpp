@@ -33,21 +33,6 @@ struct BoundingBox {
   float ymax;
 };
 
-/**
- * @brief converts millimeters to feet and inches
- *
- * @param millimeters the distance value in millimeters
- * @return std::string      value that in form of X'Y''
- */
-inline std::string convert_mm_to_feet_and_inches(double millimeters) {
-  // There are 25.4 millimeters in an inch.
-  int inches = static_cast<int>(millimeters / 25.4);
-
-  // There are 12 inches in a foot.
-  int feet = inches / 12;
-
-  return std::to_string(feet) + " ' " + std::to_string(inches % 12) + " ''";
-}
 
 /**
  * @brief generates a unix timestamp

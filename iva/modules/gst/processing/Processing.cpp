@@ -219,6 +219,7 @@ bool core::Processing::osd_callback(GstPad *pad, GstPadProbeInfo *info)
     // The element belongs to a bin
     GstBin *bin = GST_BIN(bin_element);
     binName = (std::string) gst_element_get_name(GST_ELEMENT(bin));
+    VLOG(DEBUG) << "BinName=" << binName;
   } else {
     LOG(FATAL) << "GST_IS_BIN(bin_element) is not true";
   }

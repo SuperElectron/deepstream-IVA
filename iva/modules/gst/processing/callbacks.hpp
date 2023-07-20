@@ -129,8 +129,9 @@ inline cv::Mat getRGBFrame(GstMapInfo in_map_info, gint idx) {
 namespace GstCallbacks {
 
 /**
- * @brief callback for nvidia element pad (sink of nvtracker) that extracts
- * metadata from pipeline and adds processes it
+ * @brief callback for nvidia element pad (sink of nvtracker) that extracts metadata from pipeline and adds processes it
+ * and creates a kafka payload with its items
+ * @copydoc adds to meta_queue and display_queue if enabled in config.json
  *
  * @param pad               the pad to which the callback is attached
  * @param info              the data component of the gstreamer buffer
@@ -151,6 +152,7 @@ inline GstPadProbeReturn probe_callback(GstPad *pad, GstPadProbeInfo *info, gpoi
 
 /**
  * @brief callback to write on display for element pad that has caps="video/x-raw,format=YV12"
+ * @copydoc reads from _display_queue and writes bbox onto image
  *
  * @param pad               the pad to which the callback is attached
  * @param info              the data component of the gstreamer buffer
@@ -169,7 +171,7 @@ inline GstPadProbeReturn osd_callback(GstPad *pad, GstPadProbeInfo *info, gpoint
   return GST_PAD_PROBE_OK;
 }
 
-
+//////////////// DEBUGGING CALLBACKS ////////////////
 
 /**
  * @brief callback to convert any buffer to image with openCV
@@ -264,14 +266,14 @@ inline GstPadProbeReturn save_image_to_disk(GstPad *pad, GstPadProbeInfo *info, 
 }
 
 /**
- * @brief callback for nvidia element pad (sink of nvtracker) that extracts metadata
+ * @brief An EXAMPLE callback for nvidia element pad (sink of nvtracker) that extracts metadata
  *
  * @param pad               @description the pad to which the callback is attached
  * @param info              @description the data component of the gstreamer buffer
  * @param u_data            @description user data pointer passed into the callback
  * @return GstFlowReturn    @description return handle behaviour
  */
-inline GstPadProbeReturn unpack_dsMeta(GstPad *pad, GstPadProbeInfo *info, gpointer u_data)
+inline GstPadProbeReturn unpack_dsMeta_example(GstPad *pad, GstPadProbeInfo *info, gpointer u_data)
 {
   // map the Gstreamer
   GstBuffer *buf = (GstBuffer *)info->data;
