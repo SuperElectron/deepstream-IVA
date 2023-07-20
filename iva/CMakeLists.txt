@@ -42,6 +42,16 @@ set(PROJECT_MODULES_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/modules)
 # Set up packages and build options
 ################################################
 
+if( ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64" )
+    set(BUILD_ARCHITECTURE "x64" )
+#    set(CUDA_VER 11.6)
+else(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64" )
+    set(BUILD_ARCHITECTURE "arm64" )
+#    set(CUDA_VER 11.4)
+endif()
+
+set(GTest_DIR /start/vcpkg/installed/${BUILD_ARCHITECTURE}-linux/share/gtest)
+
 set("CMAKE_TOOLCHAIN_FILE /start/vcpkg/scripts/buildsystems/vcpkg.cmake")
 include(/start/vcpkg/scripts/buildsystems/vcpkg.cmake)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_MODULES_DIR}")

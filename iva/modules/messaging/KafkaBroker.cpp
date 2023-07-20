@@ -72,12 +72,12 @@ bool KafkaBroker::set_configs(njson conf)
     std::set<std::string> topics;
     std::string topics_display;
     ProducerSettings producerSettings = {
-        .topic = conf["producer"]["topic"].get<std::string>(),
-        .kafka_server_ip = conf["producer"]["kafka_server_ip"],
+        .topic = conf["topic"].get<std::string>(),
+        .kafka_server_ip = conf["kafka_server_ip"],
     };
 
     KafkaSettings configs = {.producer = producerSettings};
-
+    this->_producer_enable = conf["enable"].get<bool>();
     this->_configs = configs;
   }
   catch (const std::exception &e) {
@@ -92,6 +92,9 @@ bool KafkaBroker::set_configs(njson conf)
  */
 void KafkaBroker::_validate_broker_connection()
 {
+  if (!this->_producer_enable)
+    return;
+
   this->_broker_connected = false;
   while (!this->_broker_connected) {
     kafka::Properties props;

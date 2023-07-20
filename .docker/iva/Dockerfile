@@ -36,8 +36,6 @@ RUN --mount=type=cache,target=/var/cache/apt apt-get install -y cuda
 RUN rm -rf /var/lib/apt/lists/*
 RUN rm -rf ~/.cache/gstreamer-1.0/registry.*.bin && apt-get update -yqq
 
-RUN cp /usr/local/cuda/targets/x86_64-linux/lib/libcudart.so /opt/nvidia/deepstream/deepstream/lib/libcudart.so
-
 # Command executed for container spin up ( docker-compose, docker run)
 HEALTHCHECK CMD ping -c3 -i 10 127.0.0.1
 # default location for `docker exec`

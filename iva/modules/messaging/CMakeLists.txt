@@ -26,7 +26,7 @@ file(GLOB SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
 # include this module's directory so other modules can find it
-target_include_directories(${PROJECT_NAME}_LIB PUBLIC . )
+target_include_directories(${PROJECT_NAME}_LIB PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # create the library
 target_sources(${PROJECT_NAME}_LIB PUBLIC ${HEADERS} ${SRC} )

@@ -322,7 +322,7 @@ bool Pipeline::_create_pipeline_from_yaml(std::string file_path)
     GstElement *new_element = gst_element_factory_make(element_name.c_str(), name.c_str());
     if(!gst_bin_add(GST_BIN(this->pipeline), new_element))
     {
-      LOG(ERROR) << "Could not add element to bin: name" << element_name << ", alias: " << name;
+      LOG(ERROR) << "Could not add element to bin: name=" << element_name << ", alias=" << name;
       return false;
     }
 

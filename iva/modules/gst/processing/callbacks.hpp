@@ -144,8 +144,11 @@ inline GstPadProbeReturn probe_callback(GstPad *pad, GstPadProbeInfo *info, gpoi
   auto processor = (core::Processing *)u_data;
   // NvDS structures
   bool ret = processor->probe_callback(pad, info);
-  if (!ret)
+  if (!ret) {
+    LOG(ERROR) << "Processing failed";
     GST_PAD_PROBE_PASS;
+  }
+
 
   return GST_PAD_PROBE_OK;
 }
@@ -165,8 +168,10 @@ inline GstPadProbeReturn osd_callback(GstPad *pad, GstPadProbeInfo *info, gpoint
   auto processor = (core::Processing *)u_data;
   // NvDS structures
   bool ret = processor->osd_callback(pad, info);
-  if (!ret)
+  if (!ret) {
+    LOG(ERROR) << "Processing failed";
     GST_PAD_PROBE_PASS;
+  }
 
   return GST_PAD_PROBE_OK;
 }
