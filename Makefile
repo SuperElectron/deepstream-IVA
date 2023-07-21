@@ -71,6 +71,8 @@ build_kafka:
 		$(DOCKER_DIR)/$(KAFKA_MODULE)
 build_kafkacat:
 	docker buildx build -t $(KAFKACAT_MODULE) $(DOCKER_DIR)/$(KAFKA_MODULE)/$(KAFKACAT_MODULE)
+build_camera:
+	docker buildx build -t $(CAMERA_MODULE) $(DOCKER_DIR)/$(CAMERA_MODULE)
 
 # RUN COMMANDS
 start: network start_iva start_kafka
@@ -108,6 +110,16 @@ start_kafka:
 		-v $(PROJECT_DIR)/.cache:/tmp \
 		-w /opt/kafka \
 		$(KAFKA_MODULE)
+
+start_camera:
+	docker run -it --name $(CAMERA_MODULE) \
+		--net $(PROJECT_NAME)_server \
+		--ip $(SUBNET_BASE).2 \
+		-e PYTHONUNBUFFERED=1 \
+		-p 80:80 \
+		-p 8554:8554 \
+		-v $(PROJECT_DIR)/.cache:/tmp \
+		$(CAMERA_MODULE)
 
 # RUN EXECUTIVE COMMAND IN DOCKER CONTAINER (open bash terminal, run program, ... etc)
 enter:
