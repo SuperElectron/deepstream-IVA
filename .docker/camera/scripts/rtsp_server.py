@@ -8,9 +8,22 @@ gi.require_version('GstApp', '1.0')
 from gi.repository import Gst, GstRtspServer, GLib
 
 # Configure the logging module
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s [%(levelname)s] - %(message)s',
-                    handlers=[logging.StreamHandler()])
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] - %(message)s',
+    handlers=[logging.StreamHandler()]
+)
+
+
+USER_MESSAGE = "***\n " \
+               "-- INSTRUCTIONS -- \n" \
+               "1. Changing the video file that is played -- \n" \
+               "You must mount a video to /tmp/sample_videos/video.mp4\n" \
+               "docker run -it --name camera -v `pwd`/.cache/sample_videos:/tmp alphawise/camera  \n" \
+               "2. VIEWING THE RTSP STREAM -- \n" \
+               "Install ffmpeg: $ sudo apt-get install -y ffmpeg\n" \
+               "View stream:    $ ffplay rtsp://172.23.0.2:8554/test\n" \
+               "***\n"
 
 
 class RTSPServer(GstRtspServer.RTSPServer):
@@ -18,8 +31,6 @@ class RTSPServer(GstRtspServer.RTSPServer):
         super(RTSPServer, self).__init__()
 
         video_file = "/tmp/sample_videos/test.mp4"
-        logging.info(f"Starting up the RTSP stream with video ({video_file})")
-        logging.info(f"To test the stream: \n\t$ apt-get install -y ffmpeg \n\t $ ffplay rtsp://172.23.0.2:8554/test")
 
         # Set the RTSP server properties
         self.set_service("8554")
@@ -37,21 +48,14 @@ class RTSPServer(GstRtspServer.RTSPServer):
         # # Set a callback function for when the video reaches the end
         factory.connect("media-configure", self.on_media_configure)
 
-    def on_media_configure(self, factory, media):
+    @staticmethod
+    def on_media_configure(factory, media):
         logging.info("End of stream, restarting...")
         pipeline = media.get_element()
-
         pipeline.set_state(Gst.State.NULL)
         pipeline.set_state(Gst.State.READY)
         pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT, 0)
         pipeline.set_state(Gst.State.PLAYING)
-
-        # # Set the uri property of uridecodebin to reload the video file
-        # src = pipeline.get_property("source")
-        # pipeline.set_state(Gst.State.NULL)
-        # pipeline.set_state(Gst.State.READY)
-        # # pipeline.set_property("uri", uri)
-        # pipeline.set_state(Gst.State.PLAYING)
 
 def main():
     # Initialize GStreamer
@@ -61,6 +65,8 @@ def main():
     server = RTSPServer()
     thread = Thread(target=server.attach, args=(None,))
     thread.start()
+
+    logging.info(USER_MESSAGE)
 
     try:
         # Run the GMainLoop to handle GStreamer events
