@@ -1,13 +1,14 @@
 ################################################
 ### BUILD instructions (generate binary in /src/build)
 ## cmake [options]
-# -DBUILD_TESTS=ON/OFF
+# -D BUILD_TESTS=ON/OFF
+# -D SECURITY_FOLDER=/path/to/security/configs
+#
 # cmake -B [directory] -S [location of CMakeLists.txt] [options]
-# cmake -B build -S . -DBUILD_TESTS=OFF
-# cmake --build [directory] [-j(number of processes), -j=all]
-# cmake --build build -j
+# mkdir -p && cd build
+# cmake ..
+# make -j -l5
 ### RUN instructions (run binary file `gstreamer` in /src/build)
-# cd build
 # ./gstreamer
 ################################################
 # Main CMake settings for the project
@@ -42,12 +43,10 @@ set(PROJECT_MODULES_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/modules)
 # Set up packages and build options
 ################################################
 
-if( ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64" )
+if(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64" )
     set(BUILD_ARCHITECTURE "x64" )
-#    set(CUDA_VER 11.6)
 else(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64" )
     set(BUILD_ARCHITECTURE "arm64" )
-#    set(CUDA_VER 11.4)
 endif()
 
 set(GTest_DIR /start/vcpkg/installed/${BUILD_ARCHITECTURE}-linux/share/gtest)
@@ -59,10 +58,12 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_MODULES_DIR}")
 # cmake .. -DBUILD_TESTS=ON
 option(BUILD_TESTS "Build unit tests" OFF)
 
-# cmake .. -SECURITY_FOLDER=/path/to/security/configs; otherwise set to default in SoftwareLicense.h
+# cmake .. -D SECURITY_FOLDER=/path/to/security/configs; otherwise set to default in SoftwareLicense.h
 option(SECURITY_FOLDER "Include alternate directory for security configs" OFF)
 if(SECURITY_FOLDER)
     add_compile_definitions(SECURITY_FOLDER="${SECURITY_FOLDER}")
+else()
+    add_compile_definitions(SECURITY_FOLDER="/tmp/.cache/licenses")
 endif()
 
 ################################################

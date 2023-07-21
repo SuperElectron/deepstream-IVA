@@ -43,10 +43,6 @@ clean_docs:
 clean_git:
 	git branch -D `git branch --merged | grep -v \* | xargs`
 
-ssh:
-	eval $(shell ssh-agent -s)
-	shell ssh-add ~/.ssh/github
-
 #################################################
 ## DOCKER PROJECT COMMANDS
 
@@ -81,7 +77,6 @@ start: network start_iva start_kafka
 start_iva:
 	docker run -d --name $(IVA_MODULE) \
 	    --user=0 \
-	    --security-opt seccomp=unconfined  \
 	    --runtime nvidia \
 	    --gpus all \
 	    -e DISPLAY=$(DISPLAY) \
@@ -105,7 +100,6 @@ start_kafkacat:
 #		-v $(DOCKER_DIR)/kafka/configs/kafka-server-SSL.properties:/opt/kafka/config/server.properties
 start_kafka:
 	docker run -it --name $(KAFKA_MODULE) \
-		--privileged \
 		--net=host \
 		-v $(PROJECT_DIR)/.cache:/tmp \
 		-w /opt/kafka \

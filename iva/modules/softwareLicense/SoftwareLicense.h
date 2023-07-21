@@ -13,23 +13,8 @@
 using njson = nlohmann::json;
 
 #ifndef SECURITY_FOLDER
-#define SECURITY_FOLDER "/src/modules/softwareLicense/licenses"
+#define SECURITY_FOLDER "/tmp/.cache/licenses"
 #endif
-
-//// general product information
-//#define RELEASE_VERSION "1.0"
-//#define RELEASE_CHANNEL "stable"
-//#define RELEASE_PLATFORM "linux-x86_64"
-//
-////// iva-test
-////#define PRODUCT_ID "bbe14017-b8d6-4839-8447-fc7e501be05c"
-////#define LICENSE_KEY "655A47-D53C23-439488-377F39-30006D-4E295E"
-////#define PRODUCT_DAT_PATH "/home/mat/code/github/alphawise/security/license.dat"
-//
-//// single-seat
-//#define PRODUCT_ID "a530aaa8-8e27-495c-b08b-fb71e6d473ce"
-//#define LICENSE_KEY "1B76E3-B95866-406CB6-49F32C-EE8C75-ECB765"
-//#define PRODUCT_DAT_PATH "/home/mat/code/github/alphawise/security/single-seat.dat"
 
 #define CONTACT_MSG "Please contact info@alphaiwsesolutions.com"
 
