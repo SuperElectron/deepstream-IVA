@@ -116,7 +116,6 @@ start_camera:
 		--net $(PROJECT_NAME)_server \
 		--ip $(SUBNET_BASE).2 \
 		-e PYTHONUNBUFFERED=1 \
-		-p 80:80 \
 		-p 8554:8554 \
 		-v $(PROJECT_DIR)/.cache:/tmp \
 		$(CAMERA_MODULE)
