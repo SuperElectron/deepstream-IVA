@@ -6,10 +6,10 @@
   },
   "pipeline": {
     "configs": "/src/configs/pipeline/nvds_file.yml",
-    "src_type": "yaml",
+    "src_type": "rtsp",
     "sink_type": "display",
     "sources": [
-      "/src/sample_videos/head-pose-face-detection-female.mp4"
+      "rtsp://172.23.0.2:8554/test"
     ],
     "sinks": [
       "rtmp://0.0.0.0:8554/test1",
@@ -19,7 +19,7 @@
     ],
     "input_width": 1280,
     "input_height": 720,
-    "live_source": false,
+    "live_source": true,
     "sync": true
   },
   "processing": {

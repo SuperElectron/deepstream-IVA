@@ -47,6 +47,8 @@ if(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64" )
     set(BUILD_ARCHITECTURE "x64" )
 else(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64" )
     set(BUILD_ARCHITECTURE "arm64" )
+    set(PLATFORM_TEGRA "TRUE")
+    ADD_DEFINITIONS(-DPLATFORM_TEGRA=TRUE)
 endif()
 
 set(GTest_DIR /start/vcpkg/installed/${BUILD_ARCHITECTURE}-linux/share/gtest)

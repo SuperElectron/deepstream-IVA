@@ -24,8 +24,8 @@ bool Pipeline::_set_up()
 
   bool ret = false;
   // check if using yaml builder or production builder
-  if(this->_configs.src_type == "v4l2src" || this->_configs.src_type == "mp4") {
-    LOG(INFO) << "Detected pipeline.type=(v4l2src, file)=" << this->_configs.src_type;
+  if(this->_configs.src_type == "v4l2src" || this->_configs.src_type == "mp4" || this->_configs.src_type == "rtsp") {
+    LOG(INFO) << "Detected pipeline.type=(v4l2src, file, rtsp)=" << this->_configs.src_type;
     ret = this->_create_pipeline();
   } else if (this->_configs.src_type == "yaml") {
     LOG(INFO) << "Detected pipeline.type=(yaml)=" << this->_configs.src_type;

@@ -74,8 +74,11 @@ build_camera:
 # RUN COMMANDS
 start: network start_iva start_kafka
 
+
 start_iva:
 	docker run -d --name $(IVA_MODULE) \
+		--net $(PROJECT_NAME)_server \
+		--ip $(SUBNET_BASE).3 \
 	    --user=0 \
 	    --runtime nvidia \
 	    --gpus all \
@@ -112,7 +115,7 @@ start_camera:
 		--user dev \
 		-e PYTHONUNBUFFERED=1 \
 		-p 8554:8554 \
-		-v $(PROJECT_DIR)/.cache/sample_videos/:/home/dev/ \
+		-v $(PROJECT_DIR)/.cache/sample_videos/:/home/dev/sample_videos \
 		$(CAMERA_MODULE)
 
 # RUN EXECUTIVE COMMAND IN DOCKER CONTAINER (open bash terminal, run program, ... etc)
