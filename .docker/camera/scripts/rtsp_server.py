@@ -18,8 +18,8 @@ logging.basicConfig(
 USER_MESSAGE = "***\n " \
                "-- INSTRUCTIONS -- \n" \
                "1. Changing the video file that is played -- \n" \
-               "You must mount a video to /tmp/sample_videos/video.mp4\n" \
-               "docker run -it --name camera -v `pwd`/.cache/sample_videos:/tmp alphawise/camera  \n" \
+               "You must mount a video to /home/dev/video.mp4\n" \
+               "docker run -it --name camera -v `pwd`/.cache/sample_videos:/home/dev alphawise/camera  \n" \
                "2. VIEWING THE RTSP STREAM -- \n" \
                "Install ffmpeg: $ sudo apt-get install -y ffmpeg\n" \
                "View stream:    $ ffplay rtsp://172.23.0.2:8554/test\n" \

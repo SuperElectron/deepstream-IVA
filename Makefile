@@ -69,6 +69,7 @@ build_kafka:
 		--build-arg ARCHITECTURE=$(ARCHITECTURE) \
 		-t $(KAFKA_MODULE) \
 		$(DOCKER_DIR)/$(KAFKA_MODULE)
+
 build_kafkacat:
 	docker buildx build -t $(KAFKACAT_MODULE) $(DOCKER_DIR)/$(KAFKA_MODULE)/$(KAFKACAT_MODULE)
 build_camera:
@@ -79,7 +80,6 @@ start: network start_iva start_kafka
 
 start_iva:
 	docker run -d --name $(IVA_MODULE) \
-	    --privileged \
 	    --user=0 \
 	    --security-opt seccomp=unconfined  \
 	    --runtime nvidia \
@@ -115,9 +115,10 @@ start_camera:
 	docker run -it --name $(CAMERA_MODULE) \
 		--net $(PROJECT_NAME)_server \
 		--ip $(SUBNET_BASE).2 \
+		--user dev \
 		-e PYTHONUNBUFFERED=1 \
 		-p 8554:8554 \
-		-v $(PROJECT_DIR)/.cache:/tmp \
+		-v $(PROJECT_DIR)/.cache/sample_videos/:/home/dev/ \
 		$(CAMERA_MODULE)
 
 # RUN EXECUTIVE COMMAND IN DOCKER CONTAINER (open bash terminal, run program, ... etc)

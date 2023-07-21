@@ -55,8 +55,15 @@ set(GTest_DIR /start/vcpkg/installed/${BUILD_ARCHITECTURE}-linux/share/gtest)
 set("CMAKE_TOOLCHAIN_FILE /start/vcpkg/scripts/buildsystems/vcpkg.cmake")
 include(/start/vcpkg/scripts/buildsystems/vcpkg.cmake)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_MODULES_DIR}")
+
 # cmake .. -DBUILD_TESTS=ON
 option(BUILD_TESTS "Build unit tests" OFF)
+
+# cmake .. -SECURITY_FOLDER=/path/to/security/configs; otherwise set to default in SoftwareLicense.h
+option(SECURITY_FOLDER "Include alternate directory for security configs" OFF)
+if(SECURITY_FOLDER)
+    add_compile_definitions(SECURITY_FOLDER="${SECURITY_FOLDER}")
+endif()
 
 ################################################
 # Configure project executable and library (static or shared)
@@ -100,21 +107,22 @@ add_subdirectory(modules/core)
 add_subdirectory(modules/application)
 add_subdirectory(modules/gst)
 add_subdirectory(modules/messaging)
+add_subdirectory(modules/softwareLicense)
 
 
 ################################################
 # Include libraries base cmakes for all modules
 ################################################
 
-include(cmake/date.cmake)
-include(cmake/glog.cmake)
-include(cmake/gstreamer.cmake)
-include(cmake/nlohmannjson.cmake)
-include(cmake/nvds.cmake)
-include(cmake/opencv.cmake)
-include(cmake/threadpool.cmake)
-include(cmake/uuid.cmake)
-include(cmake/yaml.cmake)
+include(${CMAKE_MODULES_DIR}/date.cmake)
+include(${CMAKE_MODULES_DIR}/glog.cmake)
+include(${CMAKE_MODULES_DIR}/gstreamer.cmake)
+include(${CMAKE_MODULES_DIR}/nlohmannjson.cmake)
+include(${CMAKE_MODULES_DIR}/nvds.cmake)
+include(${CMAKE_MODULES_DIR}/opencv.cmake)
+include(${CMAKE_MODULES_DIR}/threadpool.cmake)
+include(${CMAKE_MODULES_DIR}/uuid.cmake)
+include(${CMAKE_MODULES_DIR}/yaml.cmake)
 
 ################################################
 ## Build Application

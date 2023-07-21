@@ -1,6 +1,7 @@
 FROM ubuntu:20.04
 LABEL maintainer="AlphaWise <matmccann@gmail.com>"
 
+# TODO: remove unneccessary APT packages, and build with smaller image (get below 1G)
 ENV DEBIAN_FRONTEND noninteractive
 
 # Python module path for the root import location
@@ -31,6 +32,24 @@ EXPOSE 8554
 
 COPY conf/supervisord.conf /etc/supervisor/conf.d/supervisor.conf
 COPY scripts/rtsp_server.py /camera/rtsp_server.py
+
+RUN rm -rf /start -R
+
+## SET UP USER ACCESS TO DOCKER CONTAINER
+# Install necessary packages and set up the new user
+RUN apt-get update && \
+    apt-get install -y sudo && \
+    useradd -m dev && \
+    echo 'dev:B2CvUeR9sR7nEKwfqRvEKwrX2uBmWXZeHNbx9fyCz6g5N5CVjGKx86cK5HQaTgwJ' | chpasswd && \
+    usermod -aG sudo dev
+
+RUN chmod 115 /camera/rtsp_server.py
+
+# (Optional) Set the working directory for the new user
+WORKDIR /home/dev
+
+# Switch to the new user
+USER dev
 
 # Command executed for container spin up (docker run)
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisor.conf"]
