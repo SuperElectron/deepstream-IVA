@@ -111,6 +111,10 @@ bool Pipeline::set_configs(njson conf)
       return false;
     }
 
+    bool live_src = false;
+    if(conf["src_type"] == "rtsp")
+      live_src = true;
+
     // check that appropriate fields are included in the config.json file
     this->_configs = (PipelineConfigs){
         .src_type = conf["src_type"].get<std::string>(),
@@ -120,7 +124,7 @@ bool Pipeline::set_configs(njson conf)
         .sinks = conf["sinks"],
         .img_height = conf["input_height"].get<int>(),
         .img_width = conf["input_width"].get<int>(),
-        .live_source = conf["live_source"].get<bool>(),
+        .live_source = live_src,
         .sync = conf["sync"].get<bool>()
     };
 
