@@ -29,7 +29,8 @@ VCPKG_VER=2022.10.19
 cd /tmp && wget "https://github.com/microsoft/vcpkg/archive/refs/tags/${VCPKG_VER}.zip" && \
   cd /tmp && unzip "${VCPKG_VER}.zip" && \
   cd /tmp && rm -rf "${VCPKG_VER}.zip" && \
-  mv /tmp/vcpkg-"${VCPKG_VER}" /start/vcpkg
+  mv /tmp/vcpkg-"${VCPKG_VER}" /start/vcpkg && \
+  rm -rf /tmp/vcpk*
 
 export VCPKG_FORCE_SYSTEM_BINARIES=1
 cd "/start/vcpkg"; ./bootstrap-vcpkg.sh;
