@@ -72,7 +72,7 @@ bool SoftwareLicense::_parse_configs()
 	std::string conf = (std::string) SECURITY_FOLDER + (std::string) "/security.json";
 	if(!checkIfFileExists(conf))
 	{
-		printf("Cannot find security.json in path: %s ", SECURITY_FOLDER);
+		printf("Cannot find security.json in path: %s \n", SECURITY_FOLDER);
 		return false;
 	}
 
@@ -80,7 +80,7 @@ bool SoftwareLicense::_parse_configs()
 		std::ifstream file(conf);
 		file >> jsonData;
 	} catch (const std::exception &e) {
-        printf("Error parsing security.json: \n\tERROR\n\t %s ", e.what());
+        printf("Error parsing security.json: \n\tERROR\n\t %s \n", e.what());
 		return false;
 	}
 
@@ -92,7 +92,7 @@ bool SoftwareLicense::_parse_configs()
 		this->LICENSE_KEY = jsonData["LICENSE_KEY"].get<std::string>();
 		this->PRODUCT_DAT_PATH = jsonData["PRODUCT_DAT_PATH"].get<std::string>();
 	} catch (const std::exception &e) {
-        printf("Invalid file, security.json: %s", e.what());
+        printf("Invalid file, security.json: %s\n", e.what());
 		return false;
 	}
 

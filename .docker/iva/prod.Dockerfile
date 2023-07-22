@@ -3,9 +3,8 @@ ARG IVA_BASE_IMG
 FROM $IVA_BASE_IMG
 ENV TOKEN=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
 RUN cd /tmp && git clone -b main https://superelectron:$TOKEN@github.com/superelectron/deepstream-iva.git
-RUN mv /tmp/deepstream-iva/iva/* /src && mkdir /src/build
+RUN cp -r /tmp/deepstream-iva/iva/* /src && rm -rf /tmp/deepstream-iva && mkdir /src/build
 RUN cd /src/build && cmake ..
-RUN cd /src/build && make -j -l$(nproc/2)
 RUN cd /src/build && make -j -l$(nproc/2)
 RUN mv /src/build/iva /tmp/iva && rm -rf /src/* && mv /tmp/iva /src/iva
 
