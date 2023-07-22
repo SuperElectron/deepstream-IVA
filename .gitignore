@@ -68,6 +68,8 @@ dist
 
 ## CMake files && generated libraries
 **/*.so
+!libLexActivator.so
+
 **/data
 **/CMakeFiles
 **/cmake-build-debug
