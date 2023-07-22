@@ -47,7 +47,10 @@ public:
         auto logs_dir_warning = logs_dir + "/warning_logs/";
         auto logs_dir_error = logs_dir + "/error_logs/";
         auto logs_dir_fatal = logs_dir + "/fatal_logs/";
+
+#ifdef ENABLE_DOT
         auto gst_dot = logs_dir + "/gst_debug_dot/";
+#endif
         auto media_dir = (std::string) "/tmp/.cache";
         auto video = media_dir + "/video/";
         auto images = media_dir + "/image/";
@@ -75,11 +78,14 @@ public:
           fs::create_directory(logs_dir_fatal);
           fs::permissions(logs_dir_fatal, fs::perms::all);
         }
+
+#ifdef ENABLE_DOT
         if (!fs::exists(gst_dot)) {
             // store GST_DEBUG_DUMP_DOT_DIR diagrams for gstreamer pipeline
             fs::create_directory(gst_dot);
             fs::permissions(gst_dot, fs::perms::all);
         }
+#endif
 
         if (!fs::exists(media_dir)) {
             // store generated outputs (json, video, images)

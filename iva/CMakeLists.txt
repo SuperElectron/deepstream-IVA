@@ -65,6 +65,9 @@ option(GOOGLE_LOG_LEVEL "Set google log levels" OFF)
 option(SECURITY_FOLDER "Include alternate directory for security configs" OFF)
 # cmake .. -D YAML_CONFIGS=ON
 option(YAML_CONFIGS "Include YAML configs in Pipeline module" OFF)
+# cmake .. -D ENABLE_DOT=ON
+option(ENABLE_DOT "Create image from .dot when pipeline changes state" OFF)
+
 
 if(GOOGLE_LOG_LEVEL)
     add_compile_definitions(GOOGLE_LOG_LEVEL="${GOOGLE_LOG_LEVEL}")
