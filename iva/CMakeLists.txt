@@ -88,6 +88,12 @@ if(YAML_CONFIGS)
     ADD_DEFINITIONS(-DYAML_CONFIGS=TRUE)
 endif()
 
+if(ENABLE_DOT)
+    add_compile_definitions(ENABLE_DOT=TRUE)
+    set(ENABLE_DOT "TRUE")
+    ADD_DEFINITIONS(-DENABLE_DOT=TRUE)
+endif()
+
 ################################################
 # Configure project executable and library (static or shared)
 ################################################
