@@ -60,13 +60,13 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_MODULES_DIR}")
 # cmake .. -D BUILD_TESTS=ON
 option(BUILD_TESTS "Build unit tests" OFF)
 # cmake .. -D LOG_LEVEL=2 (1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG)
-option(LOG_LEVEL "Set google log levels" OFF)
-if(LOG_LEVEL)
-    add_compile_definitions(LOG_LEVEL="${LOG_LEVEL}")
+option(GOOGLE_LOG_LEVEL "Set google log levels" OFF)
+if(GOOGLE_LOG_LEVEL)
+    add_compile_definitions(GOOGLE_LOG_LEVEL="${GOOGLE_LOG_LEVEL}")
 else()
-    add_compile_definitions(LOG_LEVEL=2)
+    add_compile_definitions(GOOGLE_LOG_LEVEL=2)
 endif()
-message(STATUS "Set log level to ${LOG_LEVEL}")
+message(STATUS "Set GLog level to ${GOOGLE_LOG_LEVEL}")
 
 # cmake .. -D SECURITY_FOLDER=/path/to/security/configs; otherwise set to default in SoftwareLicense.h
 option(SECURITY_FOLDER "Include alternate directory for security configs" OFF)

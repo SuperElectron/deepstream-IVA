@@ -63,6 +63,8 @@ build_iva:
 build_iva_prod:
 	docker buildx build \
 		--build-arg IVA_BASE_IMG=$(IVA_BASE_IMG) \
+		--build-arg BRANCH=$(BRANCH) \
+		--build-arg TOKEN=$(TOKEN) \
 		-t $(IVA_BASE_IMG):$(PROD_TAG) \
 		-f $(DOCKER_DIR)/$(IVA_MODULE)/prod.Dockerfile \
 		$(DOCKER_DIR)/$(IVA_MODULE)

@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
   if(!success)
     return EXIT_FAILURE;
 
-  VLOG_IS_ON(LOG_LEVEL);
+  VLOG_IS_ON(GOOGLE_LOG_LEVEL);
 
   core::Logging::init(argv);
   google::InstallFailureSignalHandler();
