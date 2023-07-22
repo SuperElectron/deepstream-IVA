@@ -17,8 +17,17 @@ ApplicationContext::ApplicationContext()
  */
 bool ApplicationContext::_load_module_configs()
 {
+
+    inline bool checkIfFileExists(std::string filePath)
+    {
+      std::ifstream file(filePath);
+      return file.good();
+    }
 	/* load in module configurations */
 	std::ifstream f("/src/configs/config.json");
+    if(!f.good())
+      LOG(FATAL) << "Could not find /tmp/.cache/configs/config.json.  Ensure that you have mounted the configs directory to your project!";
+
 	njson conf = njson::parse(f);
 	if (conf.empty())
 	{
