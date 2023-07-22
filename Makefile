@@ -10,9 +10,11 @@ include .env
 TOPIC?=test
 ifeq ($(shell uname -m),x86_64)
  	ARCHITECTURE=amd
+ 	PROD_TAG=latest
  else
  	ARCHITECTURE=arm
  	DOCKER_BASE=-l4t
+ 	PROD_TAG=arm64
 endif
 
 #################################################
@@ -58,6 +60,12 @@ build: build_kafka build_iva network
 
 build_iva:
 	docker buildx build --build-arg DOCKER_BASE=$(DOCKER_BASE) -t $(IVA_MODULE) $(DOCKER_DIR)/$(IVA_MODULE)
+build_iva_prod:
+	docker buildx build \
+		--build-arg IVA_BASE_IMG=$(IVA_BASE_IMG) \
+		-t $(IVA_BASE_IMG):$(PROD_TAG) \
+		-f $(DOCKER_DIR)/$(IVA_MODULE)/prod.Dockerfile \
+		$(DOCKER_DIR)/$(IVA_MODULE)
 
 build_kafka:
 	docker buildx build \
