@@ -8,6 +8,7 @@ RUN cp -r /tmp/deepstream-iva/iva/* /src && rm -rf /tmp/deepstream-iva && mkdir 
 RUN cd /src/build && cmake ..
 RUN cd /src/build && make -j -l$(nproc/2)
 RUN mv /src/build/iva /tmp/iva && rm -rf /src/* && mv /tmp/iva /src/iva
+RUN rm -rf ~/.cache/gstreamer-1.0/*.bin
 
 CMD ["/src/.iva"]
 #CMD ["bash"]

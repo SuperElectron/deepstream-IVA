@@ -381,6 +381,10 @@ inline GstElement* createRtspSrcBin(std::string binName, std::string rtsp_url)
 
 inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_src, int width, int height, bool live_source)
 {
+  std::string detection_file = "/tmp/.cache/configs/model/detection.yml";
+  std::string tracker_file = "/tmp/.cache/configs/model/tracker.yml";
+
+
   // create bin
   GstElement* bin = gst_bin_new(binName.c_str());
   // create elements
@@ -404,14 +408,14 @@ inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_
                NULL);
   nv_infer = gst_element_factory_make("nvinfer", "nv_detection");
   g_object_set(nv_infer,
-               "config-file-path","/src/configs/model/detection.yml",
+               "config-file-path",detection_file.c_str(),
 //               "batch-size", 1,
                "qos", 1,
                NULL);
 
   nv_tracker = gst_element_factory_make("nvtracker", "nv_tracker");
   g_object_set(nv_tracker,
-               "ll-config-file", "/src/configs/model/tracker.yml",
+               "ll-config-file", tracker_file.c_str(),
                "ll-lib-file", "/opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so",
                "enable-batch-process", 1,
                "tracker-width", 640,

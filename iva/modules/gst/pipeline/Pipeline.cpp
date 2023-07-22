@@ -80,6 +80,16 @@ bool Pipeline::set_configs(njson conf)
     LOG(FATAL) << "Could not find element `pipeline['configs']` in /tmp/.cache/configs/config.json. Check your path";
 #endif
 
+  // check that mounted directory has detection.yml and tracker.yml
+  std::string detection_file = "/tmp/.cache/configs/model/detection.yml";
+  std::string tracker_file = "/tmp/.cache/configs/model/tracker.yml";
+  std::ifstream detection_f(detection_file);
+  std::ifstream tracker_f(tracker_file);
+  if(!detection_f.good())
+    LOG(FATAL) << "Could not find /tmp/.cache/configs/model/detection.yml. Ensure that .cache/configs/model has detection.yml before running the container!";
+  if(!tracker_f.good())
+    LOG(FATAL) << "Could not find /tmp/.cache/configs/model/tracker.yml. Ensure that .cache/configs/model has tracker.yml before running the container!";
+
   return true;
 }
 
