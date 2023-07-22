@@ -101,11 +101,6 @@ bool Pipeline::set_configs(njson conf)
       return false;
     }
 
-    if(!conf["live_source"].is_boolean()){
-      LOG(WARNING) << "Invalid config.json element! pipeline['live_source'] must be a boolean";
-      return false;
-    }
-
     if(!conf["sync"].is_boolean()){
       LOG(WARNING) << "Invalid config.json element! pipeline['sync'] must be a boolean";
       return false;
