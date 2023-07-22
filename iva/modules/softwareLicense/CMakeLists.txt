@@ -1,19 +1,7 @@
 cmake_minimum_required(VERSION 3.15.2)
 
-set(MODULE_NAME "messaging-kafka")
+set(MODULE_NAME "softwareLicense")
 message(STATUS "*** building ${MODULE_NAME} module ***")
-
-# include librdkafka installation
-include(/src/cmake/kafka.cmake)
-
-
-##################################################
-## Include header files for 'modern-cpp-kafka'
-
-set(KAFKA_CPP_DIR "/start/modern-cpp-kafka/include")
-file(GLOB SRC_HEADERS ${KAFKA_CPP_DIR}/kafka/*.h ${KAFKA_CPP_DIR}/kafka/*.hpp)
-target_include_directories(${PROJECT_NAME}_LIB PUBLIC ${KAFKA_CPP_DIR})
-target_sources(${PROJECT_NAME}_LIB PUBLIC ${SRC_HEADERS})
 
 ##################################################
 # get this module's files
@@ -31,6 +19,19 @@ target_include_directories(${PROJECT_NAME}_LIB PUBLIC ${CMAKE_CURRENT_SOURCE_DIR
 # create the library
 target_sources(${PROJECT_NAME}_LIB PUBLIC ${HEADERS} ${SRC} )
 
+# set location to where library folder is located
+if( ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64" )
+    set(LIBRARY_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/libraries/x86_64" )
+else(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64" )
+    set(LIBRARY_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/libraries/aarch64" )
+endif()
+
+# Set linker flags for dynamic linking
+set(LDFLAGS "-Wl,-rpath,${LIBRARY_FOLDER};-L ${LIBRARY_FOLDER};-lLexActivator")
+
+# link libs
+target_link_libraries(${PROJECT_NAME}_LIB PRIVATE ${LDFLAGS})
+
 ## deferring work to test subdirectory if required
 #if (BUILD_TESTS)
 #    message(STATUS [BUILDING_${MODULE_NAME}_test_SUBDIRECTORY])
@@ -39,3 +40,4 @@ target_sources(${PROJECT_NAME}_LIB PUBLIC ${HEADERS} ${SRC} )
 #endif ()
 
 message(STATUS "*** finished building ${MODULE_NAME} module ***")
+

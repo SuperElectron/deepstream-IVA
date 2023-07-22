@@ -218,10 +218,13 @@ inline void on_pad_added(GstElement *src_element, GstPad *src_pad, gpointer data
 
   // checks to ensure the right pad is being linked
   if (g_str_has_prefix(GST_PAD_NAME(src_pad), "video")) {
-    LOG(INFO) << "[on_pad_added]\n -- dynamic linking (padname has video prefix) (bin=" << bin_name << ", src_element=" << src_element_name << ")";
+    LOG(INFO) << "[on_pad_added]\n -- dynamic linking (video connected) (bin=" << bin_name << ", src_element=" << src_element_name << ")";
     sink_element = gst_bin_get_by_name(GST_BIN(bin), "src_parser");
-  }
-  else {
+  } else if (g_str_has_prefix(GST_PAD_NAME(src_pad), "recv_rtp_src"))
+  {
+    LOG(INFO) << "[on_pad_added]\n -- dynamic linking (rtsp connected) (bin=" << bin_name << ", src_element=" << src_element_name << ")";
+    sink_element = gst_bin_get_by_name(GST_BIN(bin), "source_depay");
+  } else {
     LOG(INFO) << "[on_pad_added]\n -- [Ignore] Unexpected pad type=(" << GST_PAD_NAME(src_pad)
               << ") called by bin=(" << bin_name << ", src_element=" << src_element_name << ") ** [ignore link] ** ";
     return;
@@ -339,17 +342,28 @@ inline GstElement* createRtspSrcBin(std::string binName, std::string rtsp_url)
     GstElement *source, *source_depay, *src_parse, *src_decoder, *src_queue;
     source = gst_element_factory_make("rtspsrc", "source");
     g_object_set(G_OBJECT(source),"location", rtsp_url.c_str(), NULL);
+    g_signal_connect(source, "pad-added", G_CALLBACK(pipelineUtils::on_pad_added), (gpointer)bin);
+
     source_depay = gst_element_factory_make("rtph264depay", "source_depay");
     src_parse = gst_element_factory_make("h264parse", "src_parse");
-    src_decoder = gst_element_factory_make("nvvideoconvert", "src_decoder");
+    src_decoder = gst_element_factory_make("nvv4l2decoder", "src_decoder");
     src_queue = gst_element_factory_make("queue", "src_queue");
 
     // add elements to the bin
     gst_bin_add_many(GST_BIN(bin), source, source_depay, src_parse, src_decoder, src_queue, NULL);
 
     // link elements
-    if(gst_element_link_many(source, source_depay, src_parse, src_decoder, src_queue, NULL) != TRUE)
-        LOG(FATAL) << "Failed to link many elements in bin=" << binName << ": Elements=(source, source_depay, src_parse, src_decoder, src_queue)";
+//    if(gst_element_link_many(source_depay, src_parse, src_decoder, src_queue, NULL) != TRUE)
+//        LOG(FATAL) << "Failed to link many elements in bin=" << binName << ": Elements=(source_depay, src_parse, src_decoder, src_queue)";
+    if (!gst_element_link(source_depay, src_parse)) {
+        LOG(FATAL) << "Failed to link many elements in bin=" << binName << ": Elements=(source_depay, src_parse)";
+    }
+    if (!gst_element_link(src_parse, src_decoder)) {
+        LOG(FATAL) << "Failed to link many elements in bin=" << binName << ": Elements=(src_parse, src_decoder)";
+    }
+    if (!gst_element_link(src_decoder, src_queue)) {
+        LOG(FATAL) << "Failed to link many elements in bin=" << binName << ": Elements=(src_decoder, src_queue)";
+    }
 
     // create ghost pad at output for future linking on queue pad (src)
     int num_pads = 0;
@@ -373,8 +387,14 @@ inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_
   GstElement *nv_mux, *nv_infer, *nv_tracker, *nv_convert, *nv_demux;
   nv_mux = gst_element_factory_make("nvstreammux", "nv_mux");
 
+  // set buffer memory type, and if on JETSON, then set to 0!
+  int mem_type = 3;
+#ifdef PLATFORM_TEGRA
+  mem_type = 0;
+#endif
+
   g_object_set(nv_mux,
-               "nvbuf-memory-type", 0,
+               "nvbuf-memory-type", mem_type,
                "batch-size", num_src,
                "width", width,
                "height", height,
@@ -384,14 +404,14 @@ inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_
                NULL);
   nv_infer = gst_element_factory_make("nvinfer", "nv_detection");
   g_object_set(nv_infer,
-               "config-file-path","/src/configs/detection.yml",
-               "batch-size", num_src,
+               "config-file-path","/src/configs/model/detection.yml",
+//               "batch-size", 1,
                "qos", 1,
                NULL);
 
   nv_tracker = gst_element_factory_make("nvtracker", "nv_tracker");
   g_object_set(nv_tracker,
-               "ll-config-file", "/src/configs/tracker.yml",
+               "ll-config-file", "/src/configs/model/tracker.yml",
                "ll-lib-file", "/opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so",
                "enable-batch-process", 1,
                "tracker-width", 640,

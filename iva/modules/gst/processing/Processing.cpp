@@ -78,31 +78,36 @@ void core::Processing::set_up(int source_count)
  */
 bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
 {
-  GstBuffer *buf = (GstBuffer *)info->data;
-  // Needed to get image width and height
-  GstMapInfo in_map_info;
-  memset(&in_map_info, 0, sizeof(in_map_info));
-  /* Map the buffer contents and get the pointer to NvBufSurface. */
-  if (!gst_buffer_map(GST_BUFFER(info->data), &in_map_info, GST_MAP_READWRITE)) {
-    LOG(ERROR) << "Error Failed to map gst buffer. Skipping";
+
+  GstVideoInfo video_info;
+  GstCaps *caps = gst_pad_get_current_caps(pad);
+  if (!gst_video_info_from_caps(&video_info, caps)) {
+    LOG(FATAL) << "[probe_callback] Could not get caps from pad";
+    gst_caps_unref(caps);
+    return GST_PAD_PROBE_OK;
+  }
+  // extract parameters from the image, then clean up references
+  gint width = GST_VIDEO_INFO_WIDTH(&video_info);
+  gint height = GST_VIDEO_INFO_HEIGHT(&video_info);
+  GstVideoFormat format = GST_VIDEO_INFO_FORMAT(&video_info);
+  std::string video_format = (std::string) gst_video_format_to_string(format);
+  gst_caps_unref(caps);
+  VLOG(DEBUG) << "VIDEO_CAPS (video_format=" << video_format << ",width=" << width << ",height=" << height << ")";
+
+  GstBuffer *buf;
+  GstMapInfo map;
+  try {
+    buf = (GstBuffer *)info->data;
+    memset(&map, 0, sizeof(map));
+    /* Map the buffer contents and get the pointer to NvBufSurface. */
+    if (!gst_buffer_map(GST_BUFFER(info->data), &map, GST_MAP_READ)){
+      LOG(ERROR) << "[probe_callback] Error Failed to map gst buffer. Skipping";
+      return false;
+    }
+  } catch (const std::exception &e) {
+    LOG(ERROR) << "[probe_callback] Error: " << e.what();
     return false;
   }
-
-  // get width, height and format (e.g. video/x-raw) from GstBuffer
-  int width, height;
-  GstCaps *caps = gst_pad_get_current_caps(pad);
-  if (!caps)
-    caps = gst_pad_query_caps(pad, NULL);
-  GstStructure *s = gst_caps_get_structure(caps, 0);
-  bool res = gst_structure_get_int(s, "width", &width);
-  res |= gst_structure_get_int(s, "height", &height);
-  std::string video_format = (std::string)gst_structure_get_string(s, "format");
-  gst_caps_unref(caps);
-  if (!res)
-    LOG(FATAL) << "The pad doesn't have image dimensions!";
-  VLOG(DEBUG) << "GST_EVENT_CAPS (video_format=" << video_format << ",width=" << width << ",height=" << height << ")";
-
-//  njson payload;
 
   NvDsMetaList *frame_list = NULL;
   NvDsMetaList *object_list = NULL;
@@ -166,6 +171,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
       payload["inference"][objects_detected]["label"] = (std::string) obj_meta->obj_label;
       payload["inference"][objects_detected]["tracking_id"] = (int) obj_meta->object_id;
       payload["inference"][objects_detected]["camera_id"] = (int) frame_meta->source_id;
+      objects_detected += 1;
     } // parse next detection for this streamId
 
     // if this source has inference detections, act on it
@@ -192,6 +198,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
       {
         this->_display_lock.lock();
         try {
+          // LOG(INFO) << "[probe_callback] " << payload.dump(4);
           this->_display_queue[(int)frame_meta->source_id]->push(payload);
         } catch (const std::exception &e) {
           LOG(ERROR) << "Error adding to queue: " << e.what();
@@ -201,7 +208,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
     }
 
   } // parse next stream_id
-
+  gst_buffer_unmap(buf, &map);
   return true;
 };
 
@@ -219,24 +226,26 @@ bool core::Processing::osd_callback(GstPad *pad, GstPadProbeInfo *info)
     // The element belongs to a bin
     GstBin *bin = GST_BIN(bin_element);
     binName = (std::string) gst_element_get_name(GST_ELEMENT(bin));
+    VLOG(DEBUG) << "BinName=" << binName;
   } else {
     LOG(FATAL) << "GST_IS_BIN(bin_element) is not true";
   }
   // get streamId from the last character in the bin: name schema={sink0, sink1, sinkN}
   int sourceStreamId = std::stoi(binName.substr(binName.length() - 1));
 //  LOG(WARNING) << "The pad belongs to GStElement=" << parent_name << " and GstBin=" << binName << " (sourceStreamId=" << sourceStreamId << ")";
-  // check if data is available on the queue
-  this->_display_lock.lock();
-  int size = this->_display_queue[sourceStreamId]->size();
-  this->_display_lock.unlock();
-  if(size < 1)
-    return true;
 
-  // pull data from the queue
+  // check if data is available on the queue
   njson detection;
   this->_display_lock.lock();
-  detection = this->_display_queue[sourceStreamId]->front();
-  this->_display_queue[sourceStreamId]->pop();
+  int size = this->_display_queue[sourceStreamId]->size();
+  if(size > 0)
+  {
+    detection = this->_display_queue[sourceStreamId]->front();
+    this->_display_queue[sourceStreamId]->pop();
+  } else {
+    this->_display_lock.unlock();
+    return true;
+  }
   this->_display_lock.unlock();
 
   // error out if no payload is available
@@ -311,6 +320,8 @@ void core::Processing::_write_detections_to_image(cv::Mat frame, njson payload)
     LOG(FATAL) << "[_write_detections_to_image] Payload entered function when it shouldn't!";
 
   njson detection = payload["inference"];
+  // LOG(INFO) << "[_write_detections_to_image] " << detection.dump(4);
+
   for (int d = 0; d < detection.size(); d++)
   {
     int tracking_id, confidence, xmin, ymin, xmax, ymax;

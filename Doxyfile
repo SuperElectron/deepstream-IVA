@@ -70,7 +70,7 @@ OPTIMIZE_OUTPUT_FOR_C=YES
 #---------------------------------------------------------------------------
 # Configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = README.md video-pipeline
+INPUT                  = README.md iva
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.c *.cpp *.h *.hpp *.*README*.md
 RECURSIVE              = YES

@@ -32,6 +32,7 @@ class Processing;
 class Event;
 
 struct PipelineConfigs {
+  std::string configs;
   std::string src_type;
   std::string sink_type;
   int source_count = 1;
@@ -97,7 +98,10 @@ class Pipeline : public BaseComponent {
 
   bool _setup_pipeline_bus();
 
+  // create a pipeline (config.json or config.yml)
   bool _create_pipeline();
+  bool _set_callbacks(GstElement *new_element, YAML::Node element);
+  bool _create_pipeline_from_yaml(std::string file_path);
 
   void _run_pipeline();
 

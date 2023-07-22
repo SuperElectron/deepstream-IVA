@@ -10,9 +10,11 @@ include .env
 TOPIC?=test
 ifeq ($(shell uname -m),x86_64)
  	ARCHITECTURE=amd
+ 	PROD_TAG=latest
  else
  	ARCHITECTURE=arm
  	DOCKER_BASE=-l4t
+ 	PROD_TAG=arm64
 endif
 
 #################################################
@@ -43,10 +45,6 @@ clean_docs:
 clean_git:
 	git branch -D `git branch --merged | grep -v \* | xargs`
 
-ssh:
-	eval $(shell ssh-agent -s)
-	shell ssh-add ~/.ssh/github
-
 #################################################
 ## DOCKER PROJECT COMMANDS
 
@@ -63,31 +61,33 @@ build: build_kafka build_iva network
 build_iva:
 	docker buildx build --build-arg DOCKER_BASE=$(DOCKER_BASE) -t $(IVA_MODULE) $(DOCKER_DIR)/$(IVA_MODULE)
 build_iva_prod:
-	docker buildx build -t $(IVA_MODULE):v1.0 \
-		--build-arg GIT_USERNAME=$(GIT_USERNAME)\
-		--build-arg GIT_BRANCH=$(GIT_BRANCH)\
-		--build-arg GIT_REPO=$(GIT_REPO)\
-		--build-arg GIT_API_KEY=$(GIT_API_KEY)\
-		--build-arg KAFKA_IP=$(HOST_IP)\
+	docker buildx build \
+		--build-arg IVA_BASE_IMG=$(IVA_BASE_IMG) \
+		-t $(IVA_BASE_IMG):$(PROD_TAG) \
 		-f $(DOCKER_DIR)/$(IVA_MODULE)/prod.Dockerfile \
 		$(DOCKER_DIR)/$(IVA_MODULE)
+
 build_kafka:
 	docker buildx build \
 		--build-arg KAFKA_BROKER=$(HOST_IP):9092 \
 		--build-arg ARCHITECTURE=$(ARCHITECTURE) \
 		-t $(KAFKA_MODULE) \
 		$(DOCKER_DIR)/$(KAFKA_MODULE)
+
 build_kafkacat:
 	docker buildx build -t $(KAFKACAT_MODULE) $(DOCKER_DIR)/$(KAFKA_MODULE)/$(KAFKACAT_MODULE)
+build_camera:
+	docker buildx build -t $(CAMERA_MODULE) $(DOCKER_DIR)/$(CAMERA_MODULE)
 
 # RUN COMMANDS
 start: network start_iva start_kafka
 
+
 start_iva:
 	docker run -d --name $(IVA_MODULE) \
-	    --privileged \
+		--net $(PROJECT_NAME)_server \
+		--ip $(SUBNET_BASE).3 \
 	    --user=0 \
-	    --security-opt seccomp=unconfined  \
 	    --runtime nvidia \
 	    --gpus all \
 	    -e DISPLAY=$(DISPLAY) \
@@ -101,39 +101,30 @@ start_iva:
 	    -v $(PROJECT_DIR)/.cache:/tmp/.cache \
 	    -w /src \
 		$(IVA_MODULE):latest bash -c "sleep infinity"
-start_iva_prod:
-	xhost + && docker run --name $(IVA_MODULE)-prod \
-	    --privileged \
-	    --net=host \
-	    --user=0 \
-	    --security-opt seccomp=unconfined  \
-	    --runtime nvidia \
-	    --gpus all \
-	    -e DISPLAY=$(DISPLAY) \
-	    -e TZ=$(shell cat /etc/timezone) \
-	    -e KAFKA_IP=$(HOST_IP) \
-	    -v "/etc/timezone:/etc/timezone:ro" \
-	    -v "/etc/localtime:/etc/localtime:ro" \
-	    -v /tmp/.X11-unix/:/tmp/.X11-unix \
-        -v ~/.Xauthority:/root/.Xauthority \
-        -v $(PROJECT_DIR)/.cache:/tmp/.cache \
-	    -v "/dev:/dev" \
-	    -w /src \
-		$(IVA_MODULE):v1.0
 
 start_kafkacat:
 	docker run -d --name $(KAFKACAT_MODULE) \
 	    --net=host \
 	    -u 0 \
 	    $(KAFKACAT_MODULE) bash -c "sleep infinity"
+
+#		-v $(DOCKER_DIR)/kafka/configs/kafka-server-SSL.properties:/opt/kafka/config/server.properties
 start_kafka:
 	docker run -it --name $(KAFKA_MODULE) \
-		--privileged \
 		--net=host \
-		-v $(DOCKER_DIR)/kafka/configs/kafka-server-SSL.properties:/opt/kafka/config/server.properties \
 		-v $(PROJECT_DIR)/.cache:/tmp \
 		-w /opt/kafka \
-		$(KAFKA_MODULE):latest bash
+		$(KAFKA_MODULE)
+
+start_camera:
+	docker run -it --name $(CAMERA_MODULE) \
+		--net $(PROJECT_NAME)_server \
+		--ip $(SUBNET_BASE).2 \
+		--user dev \
+		-e PYTHONUNBUFFERED=1 \
+		-p 8554:8554 \
+		-v $(PROJECT_DIR)/.cache/sample_videos/:/home/dev/sample_videos \
+		$(CAMERA_MODULE)
 
 # RUN EXECUTIVE COMMAND IN DOCKER CONTAINER (open bash terminal, run program, ... etc)
 enter:

@@ -1,13 +1,14 @@
 ################################################
 ### BUILD instructions (generate binary in /src/build)
 ## cmake [options]
-# -DBUILD_TESTS=ON/OFF
+# -D BUILD_TESTS=ON/OFF
+# -D SECURITY_FOLDER=/path/to/security/configs
+#
 # cmake -B [directory] -S [location of CMakeLists.txt] [options]
-# cmake -B build -S . -DBUILD_TESTS=OFF
-# cmake --build [directory] [-j(number of processes), -j=all]
-# cmake --build build -j
+# mkdir -p && cd build
+# cmake ..
+# make -j -l5
 ### RUN instructions (run binary file `gstreamer` in /src/build)
-# cd build
 # ./gstreamer
 ################################################
 # Main CMake settings for the project
@@ -42,11 +43,30 @@ set(PROJECT_MODULES_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/modules)
 # Set up packages and build options
 ################################################
 
+if(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64" )
+    set(BUILD_ARCHITECTURE "x64" )
+else(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64" )
+    set(BUILD_ARCHITECTURE "arm64" )
+    set(PLATFORM_TEGRA "TRUE")
+    ADD_DEFINITIONS(-DPLATFORM_TEGRA=TRUE)
+endif()
+
+set(GTest_DIR /start/vcpkg/installed/${BUILD_ARCHITECTURE}-linux/share/gtest)
+
 set("CMAKE_TOOLCHAIN_FILE /start/vcpkg/scripts/buildsystems/vcpkg.cmake")
 include(/start/vcpkg/scripts/buildsystems/vcpkg.cmake)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_MODULES_DIR}")
+
 # cmake .. -DBUILD_TESTS=ON
 option(BUILD_TESTS "Build unit tests" OFF)
+
+# cmake .. -D SECURITY_FOLDER=/path/to/security/configs; otherwise set to default in SoftwareLicense.h
+option(SECURITY_FOLDER "Include alternate directory for security configs" OFF)
+if(SECURITY_FOLDER)
+    add_compile_definitions(SECURITY_FOLDER="${SECURITY_FOLDER}")
+else()
+    add_compile_definitions(SECURITY_FOLDER="/tmp/.cache/licenses")
+endif()
 
 ################################################
 # Configure project executable and library (static or shared)
@@ -90,21 +110,22 @@ add_subdirectory(modules/core)
 add_subdirectory(modules/application)
 add_subdirectory(modules/gst)
 add_subdirectory(modules/messaging)
+add_subdirectory(modules/softwareLicense)
 
 
 ################################################
 # Include libraries base cmakes for all modules
 ################################################
 
-include(cmake/date.cmake)
-include(cmake/glog.cmake)
-include(cmake/gstreamer.cmake)
-include(cmake/nlohmannjson.cmake)
-include(cmake/nvds.cmake)
-include(cmake/opencv.cmake)
-include(cmake/threadpool.cmake)
-include(cmake/uuid.cmake)
-include(cmake/yaml.cmake)
+include(${CMAKE_MODULES_DIR}/date.cmake)
+include(${CMAKE_MODULES_DIR}/glog.cmake)
+include(${CMAKE_MODULES_DIR}/gstreamer.cmake)
+include(${CMAKE_MODULES_DIR}/nlohmannjson.cmake)
+include(${CMAKE_MODULES_DIR}/nvds.cmake)
+include(${CMAKE_MODULES_DIR}/opencv.cmake)
+include(${CMAKE_MODULES_DIR}/threadpool.cmake)
+include(${CMAKE_MODULES_DIR}/uuid.cmake)
+include(${CMAKE_MODULES_DIR}/yaml.cmake)
 
 ################################################
 ## Build Application

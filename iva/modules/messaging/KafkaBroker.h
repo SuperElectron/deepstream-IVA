@@ -97,6 +97,7 @@ class KafkaBroker : public BaseComponent {
 
   // producer members and attributes
   bool _producer_run = false;
+  bool _producer_enable = false;
   std::mutex producer_lock;
   std::queue<njson> producer_q;
 

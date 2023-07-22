@@ -1,18 +1,15 @@
 {
   "messaging": {
-    "producer": {
-      "topic": "my-topic",
-      "kafka_server_ip": "192.168.1.71:9092"
-    }
+    "topic": "my-topic",
+    "kafka_server_ip": "192.168.1.73:9092",
+    "enable": false
   },
   "pipeline": {
-    "src_type": "mp4",
-    "sink_type": "rtmp",
+    "configs": "/src/configs/pipeline/nvds_file.yml",
+    "src_type": "rtsp",
+    "sink_type": "display",
     "sources": [
-      "/src/sample_videos/head-pose-face-detection-female.mp4",
-      "/src/sample_videos/head-pose-face-detection-female.mp4",
-      "/src/sample_videos/head-pose-face-detection-female.mp4",
-      "/src/sample_videos/head-pose-face-detection-female.mp4"
+      "rtsp://172.23.0.2:8554/test"
     ],
     "sinks": [
       "rtmp://0.0.0.0:8554/test1",
@@ -22,7 +19,7 @@
     ],
     "input_width": 1280,
     "input_height": 720,
-    "live_source": false,
+    "live_source": true,
     "sync": true
   },
   "processing": {
@@ -30,7 +27,7 @@
     "device_id": "device-1000",
     "model": "model-name",
     "model_type": "FACE",
-    "publish": true,
+    "publish": false,
     "save": false,
     "display_detections": true,
     "bbox_line_thickness": 2,

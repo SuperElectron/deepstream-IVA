@@ -1,4 +1,6 @@
 #include "Pipeline.h"
+#include "yamlParser.hpp"
+
 
 using namespace core;
 
@@ -19,9 +21,19 @@ bool Pipeline::_set_up()
   this->processor->set_up(this->_configs.source_count);
   if (!this->_setup_pipeline_bus())
     return false;
-  if(!this->_create_pipeline())
-    return false;
-  return true;
+
+  bool ret = false;
+  // check if using yaml builder or production builder
+  if(this->_configs.src_type == "v4l2src" || this->_configs.src_type == "mp4" || this->_configs.src_type == "rtsp") {
+    LOG(INFO) << "Detected pipeline.type=(v4l2src, file, rtsp)=" << this->_configs.src_type;
+    ret = this->_create_pipeline();
+  } else if (this->_configs.src_type == "yaml") {
+    LOG(INFO) << "Detected pipeline.type=(yaml)=" << this->_configs.src_type;
+    ret = this->_create_pipeline_from_yaml(this->_configs.configs);
+  } else {
+    LOG(ERROR) << "Invalid config.json for pipeline. Unknown type=" << this->_configs.src_type;
+  }
+  return ret;
 }
 
 /**
@@ -39,6 +51,7 @@ bool Pipeline::set_configs(njson conf)
   try {
     // check that appropriate fields are included in the config.json file
     this->_configs = (PipelineConfigs){
+        .configs = conf["configs"].get<std::string>(),
         .src_type = conf["src_type"].get<std::string>(),
         .sink_type = conf["sink_type"].get<std::string>(),
         .source_count = (int) conf["sources"].size(),
@@ -64,7 +77,7 @@ bool Pipeline::_setup_pipeline_bus()
 {
   // Create gstreamer elements
   gst_init(NULL, NULL);
-  this->pipeline = gst_pipeline_new("video-player");
+  this->pipeline = gst_pipeline_new("video-player0");
   if (!pipeline) {
     LOG(ERROR) << "Pipeline could not be created: [pipeline]. Exiting";
     return false;
@@ -246,6 +259,165 @@ bool Pipeline::_create_pipeline()
   // create picture diagram of the pipeline in its current state
   pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL_READY");
 
+  return true;
+}
+
+
+/**
+ * @brief parse a yaml file and create gstreamer pipeline elements
+ * @param str std::string path to the iou_file_display.yml or config.yaml file
+ * @return bool true is success
+ */
+bool Pipeline::_create_pipeline_from_yaml(std::string file_path)
+{
+  // Load the YAML file
+  YAML::Node config = YAML::LoadFile(file_path.c_str());
+  std::string last_element;
+
+  // configure multiple sources if necessary, and keep track of their element properties
+  int bins = 1;
+  std::vector<std::pair<std::string, std::string>> property_vect;
+  if (config["sources"]) {
+    bins = config["sources"]["bins"].as<int>();
+    if(config["sources"]["property"])
+    {
+      // loop through all entries under properties, and split into key,value pairs
+      for (const auto &property : config["sources"]["property"]) {
+        std::string prop;
+        try {
+          prop = property.as<std::string>();
+        }
+        catch (const std::exception &e) {
+          LOG(ERROR) << "ERROR getting YAML field from property=" << property << ": ErrMsg=" << e.what();
+          return false;
+        }
+        // Split the fruit item by "=" sign
+        std::istringstream iss(prop);
+        std::string key, value;
+        std::getline(iss, key, '=');
+        std::getline(iss, value);
+        property_vect.push_back({key, value});
+      }
+    }
+    else {
+      LOG(ERROR) << "Invalid yaml file.  Do not include the sources key if you do not include properties";
+      return false;
+    }
+  }
+  LOG(INFO) << "Setting up pipeline source bins=(" << bins << ")";
+
+
+  // Iterate over the 'source' elements in the YAML file
+  for (const auto &element : config["source"]) {
+    std::string element_name, name;
+    try {
+      element_name = element["name"].as<std::string>();
+      name = element["alias"].as<std::string>();
+    } catch (const std::exception &e) {
+      LOG(ERROR) << "ERROR getting YAML field from 'element.name' or 'element.alias' ErrMsg=" << e.what();
+      return false;
+    }
+
+    VLOG(DEBUG) << "Creating Element: " << element_name << " : " << name;
+    GstElement *new_element = gst_element_factory_make(element_name.c_str(), name.c_str());
+    if(!gst_bin_add(GST_BIN(this->pipeline), new_element))
+    {
+      LOG(ERROR) << "Could not add element to bin: name=" << element_name << ", alias=" << name;
+      return false;
+    }
+
+    // set gstreamer properties for this element
+    if(!yamlParser::set_element_properties(new_element, element["property"]))
+      return false;
+
+    // Iterate over the key-value pairs in the properties section
+    if(!yamlParser::link_pipeline_elements(this->pipeline, new_element, last_element, element, config))
+      return false;
+
+    if(!this->_set_callbacks(new_element, element))
+      return false;
+
+    // set the last element so that the next element can link to it
+    last_element = name;
+  }
+
+  // set element state to READY
+  gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_READY);
+  // create picture diagram of the pipeline in its current state
+  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL_READY");
+  return true;
+}
+
+/**
+ * @brief set callback functions for pipeline elements
+ * @param new_element the new gstreamer element that was created
+ * @param element the element field of the YAML file
+ * @return true if successful
+ */
+bool Pipeline::_set_callbacks(GstElement *new_element, YAML::Node element)
+{
+  std::string name;
+  try {
+    name = element["alias"].as<std::string>();
+  }
+  catch (const std::exception &e) {
+    LOG(ERROR) << "ERROR getting YAML field from 'element.alias' or ErrMsg=" << e.what();
+    return false;
+  }
+  if (element["callback"]) {
+    std::string callback_type = element["callback"]["type"].as<std::string>();
+    LOG(INFO) << "Setting up callback( type= " << callback_type << " on element=" << name << ")";
+
+    // set up for a probe (used for getting access to Gstreamer buffer) or signal (custom callback when element signal is emitted)
+    if (callback_type == "probe") {
+      if (!element["callback"]["pad"] || !element["callback"]["function_name"]) {
+        LOG(ERROR) << "Expects fields `pad` and `function_name` for callback.type=probe";
+        return false;
+      }
+
+      std::string pad_name = element["callback"]["pad"].as<std::string>();
+      std::string function_name = element["callback"]["function_name"].as<std::string>();
+      VLOG(DEBUG) << "\t callback type= " << callback_type << ", pad_name=" << pad_name << ",function_name=" << function_name;
+      if (function_name == "probe_callback") {
+        // set callbacks on element probes
+        GstPad *probe_pad = gst_element_get_static_pad(new_element, pad_name.c_str());
+        gst_pad_add_probe(probe_pad, GST_PAD_PROBE_TYPE_BUFFER, core::GstCallbacks::probe_callback, (gpointer)this->processor, NULL);
+        gst_object_unref(probe_pad);
+      }
+      else if (function_name == "osd_callback") {
+        // set callbacks on element probes
+        GstPad *probe_pad = gst_element_get_static_pad(new_element, pad_name.c_str());
+        gst_pad_add_probe(probe_pad, GST_PAD_PROBE_TYPE_BUFFER, core::GstCallbacks::osd_callback, (gpointer)this->processor, NULL);
+        gst_object_unref(probe_pad);
+      }
+      else {
+        LOG(ERROR) << "Callback field `function_name` is not configured: " << function_name << "\t callback type= " << callback_type
+                   << ", pad_name=" << pad_name << ",function_name=" << function_name;
+        return false;
+      }
+    }
+    else if (callback_type == "signal") {
+      if (!element["callback"]["element_signal"] || !element["callback"]["function_name"]) {
+        LOG(ERROR) << "Expects fields `element_signal` and `function_name` for callback.type=signal";
+        return false;
+      }
+      std::string element_signal = element["callback"]["element_signal"].as<std::string>();
+      std::string function_name = element["callback"]["function_name"].as<std::string>();
+      VLOG(DEBUG) << "\t callback type= " << callback_type << ", element_signal=" << element_signal << ",function_name=" << function_name;
+      if (function_name == "on_pad_added") {
+        g_signal_connect(new_element, "pad-added", G_CALLBACK(pipelineUtils::on_pad_added), (gpointer)this->pipeline);
+      }
+      else {
+        LOG(ERROR) << "Link type is not configured: " << function_name << "\t callback type= " << callback_type << ", element_signal=" << element_signal
+                   << ",function_name=" << function_name;
+        return false;
+      }
+    }
+    else {
+      LOG(ERROR) << "Invalid config field for callback ";
+      return false;
+    }
+  }
   return true;
 }
 
