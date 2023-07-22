@@ -405,8 +405,8 @@ bool Pipeline::_create_pipeline()
   gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_NULL);
   // create picture diagram of the pipeline in its current state
 
-  if(GOOGLE_LOG_LEVEL==1)
-    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL");
+//  if(GOOGLE_LOG_LEVEL==1)
+//    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL");
 
   // link the source bins to inference bin
   for (int b=0; b<this->_configs.source_count; b++)
@@ -460,8 +460,8 @@ bool Pipeline::_create_pipeline()
   // set element state to READY
   gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_READY);
   // create picture diagram of the pipeline in its current state
-  if(GOOGLE_LOG_LEVEL==1)
-    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL_READY");
+//  if(GOOGLE_LOG_LEVEL==1)
+//    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL_READY");
 
   return true;
 }
@@ -477,16 +477,16 @@ void Pipeline::_run_pipeline()
   VLOG(DEEP) << "[2]Reference count of pipeline: " << GST_OBJECT_REFCOUNT(this->pipeline);
 
   gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_PLAYING);
-  if(GOOGLE_LOG_LEVEL==1)
-    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "READY_PLAYING");
+//  if(GOOGLE_LOG_LEVEL==1)
+//    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "READY_PLAYING");
   /* Runs loop until completion */
   g_main_loop_run(this->loop);
 
   /* Out of the main loop, clean up nicely */
   LOG(INFO) << "FINISHED PIPELINE";
   gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_NULL);
-  if(GOOGLE_LOG_LEVEL==1)
-    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "PLAYING_NULL");
+//  if(GOOGLE_LOG_LEVEL==1)
+//    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "PLAYING_NULL");
 
   gst_object_unref(GST_OBJECT(this->pipeline));
   g_source_remove(this->bus_watch_id);
@@ -624,8 +624,8 @@ bool Pipeline::_create_pipeline_from_yaml(std::string file_path)
   // set element state to READY
   gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_READY);
   // create picture diagram of the pipeline in its current state
-  if(GOOGLE_LOG_LEVEL==1)
-    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL_READY");
+//  if(GOOGLE_LOG_LEVEL==1)
+//    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL_READY");
 
   return true;
 }
