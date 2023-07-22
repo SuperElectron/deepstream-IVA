@@ -17,12 +17,6 @@ ApplicationContext::ApplicationContext()
  */
 bool ApplicationContext::_load_module_configs()
 {
-
-    inline bool checkIfFileExists(std::string filePath)
-    {
-      std::ifstream file(filePath);
-      return file.good();
-    }
 	/* load in module configurations */
 	std::ifstream f("/src/configs/config.json");
     if(!f.good())
