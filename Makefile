@@ -104,6 +104,26 @@ start_iva:
 	    -w /src \
 		$(IVA_MODULE):latest bash -c "sleep infinity"
 
+start_iva_prod:
+	xhost +;
+	docker run -it --rm --name $(IVA_MODULE)_prod \
+		--net $(PROJECT_NAME)_server \
+		--ip $(SUBNET_BASE).4 \
+	    --user=0 \
+	    --runtime nvidia \
+	    --gpus all \
+	    -e DISPLAY=$(DISPLAY) \
+	    -e TZ=$(shell cat /etc/timezone) \
+	    -v "/etc/timezone:/etc/timezone:ro" \
+	    -v "/etc/localtime:/etc/localtime:ro" \
+	    -v /tmp/.X11-unix/:/tmp/.X11-unix \
+        -v ~/.Xauthority:/root/.Xauthority \
+	    -v "/dev:/dev" \
+	    -v `pwd`/.cache/licenses:/tmp/.cache/licenses \
+	    -v `pwd`/.cache/configs:/tmp/.cache/configs \
+	    -w /src \
+		$(IVA_BASE_IMG):$(PROD_TAG) bash
+
 start_kafkacat:
 	docker run -d --name $(KAFKACAT_MODULE) \
 	    --net=host \

@@ -66,6 +66,12 @@ bool Pipeline::set_configs(njson conf)
     LOG(ERROR) << "Error setting Kafka configs: " << e.what();
     return false;
   }
+
+  // check that filepath exists
+  std::ifstream f(this->_configs.configs);
+  if(!f.good())
+    LOG(FATAL) << "Could not find element `pipeline['configs']` in /tmp/.cache/configs/config.json. Check your path";
+
   return true;
 }
 
