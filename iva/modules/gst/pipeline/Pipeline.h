@@ -79,6 +79,9 @@ class Pipeline : public BaseComponent {
  private:
   // config attributes
   PipelineConfigs _configs;
+#ifdef YAML_CONFIGS
+  std::string _yaml_configs;
+#endif
 
   // pipeline attributes
   GMainLoop *loop = g_main_loop_new(NULL, FALSE);
@@ -100,8 +103,11 @@ class Pipeline : public BaseComponent {
 
   // create a pipeline (config.json or config.yml)
   bool _create_pipeline();
-  bool _set_callbacks(GstElement *new_element, YAML::Node element);
+
+#ifdef YAML_CONFIGS
   bool _create_pipeline_from_yaml(std::string file_path);
+  bool _set_callbacks(GstElement *new_element, YAML::Node element);
+#endif
 
   void _run_pipeline();
 

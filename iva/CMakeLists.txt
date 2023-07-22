@@ -61,6 +61,11 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_MODULES_DIR}")
 option(BUILD_TESTS "Build unit tests" OFF)
 # cmake .. -D LOG_LEVEL=2 (1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG)
 option(GOOGLE_LOG_LEVEL "Set google log levels" OFF)
+# cmake .. -D SECURITY_FOLDER=/path/to/security/configs; otherwise set to default in SoftwareLicense.h
+option(SECURITY_FOLDER "Include alternate directory for security configs" OFF)
+# cmake .. -D YAML_CONFIGS=ON
+option(YAML_CONFIGS "Include YAML configs in Pipeline module" OFF)
+
 if(GOOGLE_LOG_LEVEL)
     add_compile_definitions(GOOGLE_LOG_LEVEL="${GOOGLE_LOG_LEVEL}")
 else()
@@ -68,13 +73,16 @@ else()
 endif()
 message(STATUS "Set GLog level to ${GOOGLE_LOG_LEVEL}")
 
-# cmake .. -D SECURITY_FOLDER=/path/to/security/configs; otherwise set to default in SoftwareLicense.h
-option(SECURITY_FOLDER "Include alternate directory for security configs" OFF)
 if(SECURITY_FOLDER)
     add_compile_definitions(SECURITY_FOLDER="${SECURITY_FOLDER}")
 else()
     add_compile_definitions(SECURITY_FOLDER="/tmp/.cache/licenses")
 endif()
+
+if(YAML_CONFIGS)
+    add_compile_definitions(YAML_CONFIGS=TRUE)
+    set(YAML_CONFIGS "TRUE")
+    ADD_DEFINITIONS(-DYAML_CONFIGS=TRUE)
 
 ################################################
 # Configure project executable and library (static or shared)

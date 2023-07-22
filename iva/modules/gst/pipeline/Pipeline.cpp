@@ -23,14 +23,19 @@ bool Pipeline::_set_up()
     return false;
 
   bool ret = false;
+
   // check if using yaml builder or production builder
   if(this->_configs.src_type == "v4l2src" || this->_configs.src_type == "mp4" || this->_configs.src_type == "rtsp") {
     LOG(INFO) << "Detected pipeline.type=(v4l2src, file, rtsp)=" << this->_configs.src_type;
     ret = this->_create_pipeline();
-  } else if (this->_configs.src_type == "yaml") {
+  }
+#ifdef YAML_CONFIGS
+  else if (this->_configs.src_type == "yaml") {
     LOG(INFO) << "Detected pipeline.type=(yaml)=" << this->_configs.src_type;
-    ret = this->_create_pipeline_from_yaml(this->_configs.configs);
-  } else {
+    ret = this->_create_pipeline_from_yaml(this->_yaml_configs);
+  }
+#endif
+  else {
     LOG(ERROR) << "Invalid config.json for pipeline. Unknown type=" << this->_configs.src_type;
   }
   return ret;
@@ -51,7 +56,6 @@ bool Pipeline::set_configs(njson conf)
   try {
     // check that appropriate fields are included in the config.json file
     this->_configs = (PipelineConfigs){
-        .configs = conf["configs"].get<std::string>(),
         .src_type = conf["src_type"].get<std::string>(),
         .sink_type = conf["sink_type"].get<std::string>(),
         .source_count = (int) conf["sources"].size(),
@@ -62,15 +66,19 @@ bool Pipeline::set_configs(njson conf)
         .live_source = conf["live_source"].get<bool>(),
         .sync = conf["sync"].get<bool>()
     };
+
   } catch (const std::exception &e) {
     LOG(ERROR) << "Error setting Kafka configs: " << e.what();
     return false;
   }
 
-  // check that filepath exists
+#ifdef YAML_CONFIGS
+  // check that filepath exists if using YAML configs
+  this->_yaml_configs = conf["yaml_configs"].get<std::string>();
   std::ifstream f(this->_configs.configs);
   if(!f.good())
     LOG(FATAL) << "Could not find element `pipeline['configs']` in /tmp/.cache/configs/config.json. Check your path";
+#endif
 
   return true;
 }
@@ -268,7 +276,78 @@ bool Pipeline::_create_pipeline()
   return true;
 }
 
+/**
+ * @brief runs the main gstreamer thread, g_main_loop_run, which is the main thread on the pipeline's lifecycle
+ *
+ */
+void Pipeline::_run_pipeline()
+{
+  /* Set the pipeline to "playing" state*/
+  LOG(INFO) << "STARTING PIPELINE";
+  VLOG(DEEP) << "[2]Reference count of pipeline: " << GST_OBJECT_REFCOUNT(this->pipeline);
 
+  gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_PLAYING);
+  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "READY_PLAYING");
+  /* Runs loop until completion */
+  g_main_loop_run(this->loop);
+
+  /* Out of the main loop, clean up nicely */
+  LOG(INFO) << "FINISHED PIPELINE";
+  gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_NULL);
+  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "PLAYING_NULL");
+
+  gst_object_unref(GST_OBJECT(this->pipeline));
+  g_source_remove(this->bus_watch_id);
+  g_main_loop_unref(this->loop);
+
+  LOG(INFO) << "Module finished ... notifying mediator to shut down";
+  this->_pipeline_finished();
+  return;
+}
+
+/**
+ * @brief run pipeline threads
+ */
+void Pipeline::start()
+{
+  LOG(INFO) << "Starting module";
+
+  if (!this->_set_up())
+    LOG(FATAL) << "Could not set up the pipeline module";
+
+  this->_pool.push_task(&Pipeline::_run_pipeline, this);
+}
+
+/**
+ * EVENTS
+ */
+
+/**
+ * @brief   tell the mediator that payload is ready to send to kafka producer
+ *
+ * @param stream_id     synonymous to camera id or source id, this describes the origin
+ */
+void Pipeline::_create_kafka_publish_event(const guint stream_id)
+{
+  // save stream_id to avoid loosing value from function chaining
+  guint s_id = stream_id;
+  // simple event to print pipeline name
+  KafkaEvent *event = new KafkaEvent(events::Actions::KAFKA_PRODUCE_PAYLOAD, s_id, this->_module_id);
+  this->_mediator->notify(event);
+}
+
+void Pipeline::_pipeline_finished()
+{
+  LOG(INFO) << "Stopping module";
+  PipelineEvent *event = new PipelineEvent(core::events::Actions::STOP_MODULES, core::events::Module::MODULE_PIPELINE);
+  this->_mediator->notify(event);
+  LOG(WARNING) << "Pipeline is finished, send signal to close application is being sent";
+  VLOG(DEEP) << "[3]Reference count of pipeline: " << GST_OBJECT_REFCOUNT(this->pipeline);
+}
+
+/// YAML PARSER IF ENABLED WITH CMAKE
+
+#ifdef YAML_CONFIGS
 /**
  * @brief parse a yaml file and create gstreamer pipeline elements
  * @param str std::string path to the iou_file_display.yml or config.yaml file
@@ -426,73 +505,4 @@ bool Pipeline::_set_callbacks(GstElement *new_element, YAML::Node element)
   }
   return true;
 }
-
-
-/**
- * @brief runs the main gstreamer thread, g_main_loop_run, which is the main thread on the pipeline's lifecycle
- *
- */
-void Pipeline::_run_pipeline()
-{
-  /* Set the pipeline to "playing" state*/
-  LOG(INFO) << "STARTING PIPELINE";
-  VLOG(DEEP) << "[2]Reference count of pipeline: " << GST_OBJECT_REFCOUNT(this->pipeline);
-
-  gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_PLAYING);
-  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "READY_PLAYING");
-  /* Runs loop until completion */
-  g_main_loop_run(this->loop);
-
-  /* Out of the main loop, clean up nicely */
-  LOG(INFO) << "FINISHED PIPELINE";
-  gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_NULL);
-  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "PLAYING_NULL");
-
-  gst_object_unref(GST_OBJECT(this->pipeline));
-  g_source_remove(this->bus_watch_id);
-  g_main_loop_unref(this->loop);
-
-  LOG(INFO) << "Module finished ... notifying mediator to shut down";
-  this->_pipeline_finished();
-  return;
-}
-
-/**
- * @brief run pipeline threads
- */
-void Pipeline::start()
-{
-  LOG(INFO) << "Starting module";
-
-  if (!this->_set_up())
-    LOG(FATAL) << "Could not set up the pipeline module";
-
-  this->_pool.push_task(&Pipeline::_run_pipeline, this);
-}
-
-/**
- * EVENTS
- */
-
-/**
- * @brief   tell the mediator that payload is ready to send to kafka producer
- *
- * @param stream_id     synonymous to camera id or source id, this describes the origin
- */
-void Pipeline::_create_kafka_publish_event(const guint stream_id)
-{
-  // save stream_id to avoid loosing value from function chaining
-  guint s_id = stream_id;
-  // simple event to print pipeline name
-  KafkaEvent *event = new KafkaEvent(events::Actions::KAFKA_PRODUCE_PAYLOAD, s_id, this->_module_id);
-  this->_mediator->notify(event);
-}
-
-void Pipeline::_pipeline_finished()
-{
-  LOG(INFO) << "Stopping module";
-  PipelineEvent *event = new PipelineEvent(core::events::Actions::STOP_MODULES, core::events::Module::MODULE_PIPELINE);
-  this->_mediator->notify(event);
-  LOG(WARNING) << "Pipeline is finished, send signal to close application is being sent";
-  VLOG(DEEP) << "[3]Reference count of pipeline: " << GST_OBJECT_REFCOUNT(this->pipeline);
-}
+#endif
