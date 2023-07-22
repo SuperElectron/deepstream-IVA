@@ -178,12 +178,12 @@ bool Pipeline::set_configs(njson conf)
 
   if(this->_configs.img_height == 0)
   {
-    LOG(WARNING) << "field pipeline['input_width'] not found in config.json!";
+    LOG(WARNING) << "field pipeline['input_height'] not found in config.json!";
     return false;
   }
   if(this->_configs.img_width == 0)
   {
-    LOG(WARNING) << "field pipeline['input_height'] not found in config.json!";
+    LOG(WARNING) << "field pipeline['input_width'] not found in config.json!";
     return false;
   }
 
