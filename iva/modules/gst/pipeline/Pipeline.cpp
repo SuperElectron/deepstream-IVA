@@ -49,7 +49,7 @@ bool Pipeline::_set_up()
 bool Pipeline::set_configs(njson conf)
 {
   if (conf.empty()) {
-    LOG(ERROR) << "config.json is empty!";
+    LOG(ERROR) << "config.json element `pipeline` is empty!";
     return false;
   }
 

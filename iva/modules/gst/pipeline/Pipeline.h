@@ -32,7 +32,6 @@ class Processing;
 class Event;
 
 struct PipelineConfigs {
-  std::string configs;
   std::string src_type;
   std::string sink_type;
   int source_count = 1;
