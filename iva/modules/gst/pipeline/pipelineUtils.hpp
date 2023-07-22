@@ -95,7 +95,7 @@ inline static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data)
 
   switch (GST_MESSAGE_TYPE(msg)) {
     case GST_MESSAGE_EOS: {
-      LOG(WARNING) << log_prefix << "EOS (end of stream) ... terminating gstreamer pipeline";
+      LOG(WARNING) << log_prefix << "EOS (end of stream) ... terminating pipeline";
       g_main_loop_quit(loop);
       break;
     }

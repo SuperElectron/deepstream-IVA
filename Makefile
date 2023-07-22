@@ -119,8 +119,7 @@ start_iva_prod:
 	    -v /tmp/.X11-unix/:/tmp/.X11-unix \
         -v ~/.Xauthority:/root/.Xauthority \
 	    -v "/dev:/dev" \
-	    -v `pwd`/.cache/licenses:/tmp/.cache/licenses \
-	    -v `pwd`/.cache/configs:/tmp/.cache/configs \
+	    -v `pwd`/.cache/:/tmp/.cache/ \
 	    -w /src \
 		$(IVA_BASE_IMG):$(PROD_TAG) bash
 

@@ -175,12 +175,13 @@ bool Pipeline::set_configs(njson conf)
     LOG(WARNING) << "Invalid field pipeline['sinks'] in config.json. Must have at least one sink!";
     ret = false;
   }
+
   if(this->_configs.img_height == 0)
   {
     LOG(WARNING) << "field pipeline['input_width'] not found in config.json!";
     return false;
   }
-  if(this->_configs.img_height == 0)
+  if(this->_configs.img_width == 0)
   {
     LOG(WARNING) << "field pipeline['input_height'] not found in config.json!";
     return false;
