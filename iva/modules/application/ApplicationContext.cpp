@@ -18,7 +18,7 @@ ApplicationContext::ApplicationContext()
 bool ApplicationContext::_load_module_configs()
 {
 	/* load in module configurations */
-	std::ifstream f("/src/configs/config.json");
+	std::ifstream f("/tmp/.cache/configs/config.json");
     if(!f.good())
       LOG(FATAL) << "Could not find /tmp/.cache/configs/config.json.  Ensure that you have mounted the configs directory to your project!";
 

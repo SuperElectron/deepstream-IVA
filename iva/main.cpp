@@ -12,11 +12,12 @@ int main(int argc, char *argv[])
   if(!success)
     return EXIT_FAILURE;
 
+  /* Set up logging. Note that GOOGLE_LOG_LEVEL is set in CMakeLists.txt */
   FLAGS_minloglevel = GOOGLE_LOG_LEVEL;
-//  VLOG_IS_ON(GOOGLE_LOG_LEVEL);
-
   core::Logging::init(argv);
   google::InstallFailureSignalHandler();
+
+  // start the app
   core::Application app;
   app.start();
 }
