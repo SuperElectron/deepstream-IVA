@@ -10,7 +10,7 @@ include .env
 TOPIC?=test
 ifeq ($(shell uname -m),x86_64)
  	ARCHITECTURE=amd
- 	PROD_TAG=latest
+ 	PROD_TAG=amd
  else
  	ARCHITECTURE=arm
  	DOCKER_BASE=-l4t

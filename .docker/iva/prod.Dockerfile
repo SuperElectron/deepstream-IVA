@@ -3,7 +3,14 @@ ARG IVA_BASE_IMG
 FROM $IVA_BASE_IMG
 ENV TOKEN=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
 RUN cd /tmp && git clone https://superelectron:$TOKEN@github.com/superelectron/deepstream-iva.git
-RUN cd /tmp/deepstream-iva && mkdir build
+RUN mv /tmp/deepstream-iva/iva/* /src && mkdir /src/build
+RUN cd /src/build && cmake ..
+RUN cd /src/build && make -j -l5
+#RUN rm -rf /src/deepstream-iva
+#RUN mkdir -p /tmp/deepstream-iva/build
+#RUN cd /tmp/deepstream-iva/build && cmake ..
+#RUN cd /tmp/deepstream-iva/build && make -j -l5
+#RUN mv /tmp/deepstream-iva/build /src/build
 
 
 ## copy local folder to docker image
