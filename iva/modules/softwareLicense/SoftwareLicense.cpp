@@ -104,7 +104,7 @@ bool SoftwareLicense::_parse_configs()
 	}
 
 	this->PRODUCT_DAT_PATH = dt_path;
-	printf("Found license file: %s\n", this->PRODUCT_DAT_PATH.c_str());
+	// printf("Found license file: %s\n", this->PRODUCT_DAT_PATH.c_str());
     return true;
 }
 

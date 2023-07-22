@@ -37,10 +37,10 @@ struct PipelineConfigs {
   int source_count = 1;
   njson sources;
   njson sinks;
-  int img_height;
-  int img_width;
-  bool live_source;
-  bool sync;
+  int img_height=0;
+  int img_width=0;
+  bool live_source=false;
+  bool sync=false;
 };
 
 /**

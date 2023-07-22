@@ -1,6 +1,10 @@
 #include "Pipeline.h"
-#include "yamlParser.hpp"
 
+#ifdef YAML_CONFIGS
+#include "yamlParser.hpp"
+#endif
+
+#include "discoverer.hpp"
 
 using namespace core;
 
@@ -25,8 +29,8 @@ bool Pipeline::_set_up()
   bool ret = false;
 
   // check if using yaml builder or production builder
-  if(this->_configs.src_type == "v4l2src" || this->_configs.src_type == "mp4" || this->_configs.src_type == "rtsp") {
-    LOG(INFO) << "Detected pipeline.type=(v4l2src, file, rtsp)=" << this->_configs.src_type;
+  if(this->_configs.src_type == "file" || this->_configs.src_type == "rtsp") {
+    LOG(INFO) << "Detected pipeline.type=(file, rtsp)=" << this->_configs.src_type;
     ret = this->_create_pipeline();
   }
 #ifdef YAML_CONFIGS
@@ -38,6 +42,7 @@ bool Pipeline::_set_up()
   else {
     LOG(ERROR) << "Invalid config.json for pipeline. Unknown type=" << this->_configs.src_type;
   }
+
   return ret;
 }
 
@@ -54,6 +59,58 @@ bool Pipeline::set_configs(njson conf)
   }
 
   try {
+
+    if(!conf["src_type"].is_string())
+    {
+      LOG(WARNING) << "Invalid config.json element! pipeline['src_type'] must be a string";
+      return false;
+    }
+
+
+    if(!conf["sink_type"].is_string()){
+      LOG(WARNING) << "Invalid config.json element! pipeline['sink_type'] must be a string";
+      return false;
+    }
+
+
+    if(!conf["sources"].is_array()){
+      LOG(WARNING) << "Invalid config.json element! pipeline['sources'] must be a array";
+      return false;
+    }
+    if(!pipelineUtils::areAllElementsStrings(conf["sources"])){
+      LOG(WARNING) << "Invalid config.json element! pipeline['sources'] must be a array of strings.";
+      return false;
+    }
+
+    if(!conf["sinks"].is_array()){
+      LOG(WARNING) << "Invalid config.json element! pipeline['sinks'] must be a array";
+      return false;
+    }
+    if(!pipelineUtils::areAllElementsStrings(conf["sinks"])){
+      LOG(WARNING) << "Invalid config.json element! pipeline['sinks'] must be a array of strings.";
+      return false;
+    }
+
+    if(!conf["input_height"].is_number_integer()){
+      LOG(WARNING) << "Invalid config.json element! pipeline['input_height'] must be an integer";
+      return false;
+    }
+
+    if(!conf["input_width"].is_number_integer()){
+      LOG(WARNING) << "Invalid config.json element! pipeline['input_width'] must be an integer";
+      return false;
+    }
+
+    if(!conf["live_source"].is_boolean()){
+      LOG(WARNING) << "Invalid config.json element! pipeline['live_source'] must be a boolean";
+      return false;
+    }
+
+    if(!conf["sync"].is_boolean()){
+      LOG(WARNING) << "Invalid config.json element! pipeline['sync'] must be a boolean";
+      return false;
+    }
+
     // check that appropriate fields are included in the config.json file
     this->_configs = (PipelineConfigs){
         .src_type = conf["src_type"].get<std::string>(),
@@ -68,7 +125,7 @@ bool Pipeline::set_configs(njson conf)
     };
 
   } catch (const std::exception &e) {
-    LOG(ERROR) << "Error setting Kafka configs: " << e.what();
+    LOG(ERROR) << "Error setting pipeline configs: " << e.what();
     return false;
   }
 
@@ -89,8 +146,105 @@ bool Pipeline::set_configs(njson conf)
     LOG(FATAL) << "Could not find /tmp/.cache/configs/model/detection.yml. Ensure that .cache/configs/model has detection.yml before running the container!";
   if(!tracker_f.good())
     LOG(FATAL) << "Could not find /tmp/.cache/configs/model/tracker.yml. Ensure that .cache/configs/model has tracker.yml before running the container!";
+//
+//  /**
+//   * SANITIZE INPUTS
+//   */
+  bool ret = true;
 
-  return true;
+  //ensure the sources are correct
+  if(this->_configs.src_type != "file" && this->_configs.src_type != "rtsp")
+  {
+    LOG(WARNING) << "Invalid field in config.json: pipeline['src_type']=" << this->_configs.src_type << ". Must be one of the following (file, rtsp)";
+    ret = false;
+  }
+  if(this->_configs.sources.size() < 1)
+  {
+    LOG(WARNING) << "Invalid field pipeline['sources'] in config.json. Must have at least one source!";
+    ret = false;
+  }
+
+  // ensure sink type is correct
+  if(this->_configs.sink_type != "display" && this->_configs.sink_type != "file" && this->_configs.sink_type != "rtmp")
+  {
+    LOG(WARNING) << "Invalid field in config.json: pipeline['sink_type']=" << this->_configs.sink_type << ". Must be one of the following (display, file, rtmp)";
+    ret = false;
+  }
+  if(this->_configs.sink_type != "display" && this->_configs.sinks.size() < 1)
+  {
+    LOG(WARNING) << "Invalid field pipeline['sinks'] in config.json. Must have at least one sink!";
+    ret = false;
+  }
+  if(this->_configs.img_height == 0)
+  {
+    LOG(WARNING) << "field pipeline['input_width'] not found in config.json!";
+    return false;
+  }
+  if(this->_configs.img_height == 0)
+  {
+    LOG(WARNING) << "field pipeline['input_height'] not found in config.json!";
+    return false;
+  }
+
+  // check that files are correct
+  for (size_t i = 0; i < this->_configs.sources.size(); ++i) {
+    // check that it is not empty
+    if(this->_configs.sources[i].get<std::string>().size() == 0) {
+      LOG(WARNING) << "Is empty: sources[" << i << "]=" << this->_configs.sources[i];
+      ret = false;
+    }
+    if(this->_configs.src_type == "file") {
+      // check that ends with .mp4
+      if (!pipelineUtils::checkStringEndsWith(this->_configs.sources[i], ".mp4")) {
+        ret = false;
+        LOG(WARNING) << "mp4 file must end with .mp4: sources[" << i << "]=" << this->_configs.sources[i];
+      }
+    }
+    else if(this->_configs.src_type == "rtsp") {
+      // check that it starts with rtsp://
+      if (!pipelineUtils::checkStringStartsWith(this->_configs.sources[i], "rtsp://")) {
+        ret = false;
+        LOG(WARNING) << "rtsp url must start with rtsp://: sources[" << i << "]=" << this->_configs.sources[i];
+      }
+    }
+
+  }
+  // check that no duplicates exist
+  if(!pipelineUtils::areAllElementsUniqueStrings(this->_configs.sources))
+    ret = false;
+
+
+  for (size_t i = 0; i < this->_configs.sinks.size(); ++i) {
+    // check that it is not empty
+    if(this->_configs.sinks[i].get<std::string>().size() == 0)
+    {
+      LOG(WARNING) << "Is empty: sinks[" << i << "]=" << this->_configs.sinks[i];
+      ret = false;
+    }
+
+    // checks that types entered are correct
+    if(this->_configs.sink_type == "file") {
+      // check that ends with .mp4
+      if(!pipelineUtils::checkStringEndsWith(this->_configs.sinks[i], ".mp4"))
+      {
+        ret = false;
+        LOG(WARNING) << "Is not an mp4 file: sinks[" << i << "]=" << this->_configs.sinks[i];
+      }
+    }
+    else if(this->_configs.sink_type == "rtmp") {
+      // check that it starts with rtsp://
+      if (!pipelineUtils::checkStringStartsWith(this->_configs.sources[i], "rtmp://")) {
+        ret = false;
+        LOG(WARNING) << "rtmp url must start with rtmp://: sources[" << i << "]=" << this->_configs.sources[i];
+      }
+    }
+  }
+
+  // check that no duplicates exist
+  if(!pipelineUtils::areAllElementsUniqueStrings(this->_configs.sinks))
+    ret = false;
+
+  return ret;
 }
 
 /**
@@ -120,7 +274,7 @@ bool Pipeline::_setup_pipeline_bus()
 bool Pipeline::_create_pipeline()
 {
   // use configs to create sourceBins and add them to the pipeline
-  if (this->_configs.src_type.compare("mp4") == 0) {
+  if (this->_configs.src_type.compare("file") == 0) {
     for(int b = 0; b < this->_configs.source_count; b++) {
       std::string src_name = (std::string) "srcBin" + std::to_string(b);
       std::string file_src = this->_configs.sources[b];
@@ -133,6 +287,17 @@ bool Pipeline::_create_pipeline()
       }
     }
   } else if (this->_configs.src_type.compare("rtsp") == 0) {
+
+//    for(int b = 0; b < this->_configs.source_count; b++) {
+//      std::string src_name = (std::string) "srcBin" + std::to_string(b);
+//      std::string uri = this->_configs.sources[b];
+//      bool rtsp_available = rtspAnalyzer::analyzeRTSPStream(uri);
+//      std::string displayVal = (rtsp_available == true ? "true":"false");
+//      std::cout << "Checking URI: " << uri << ", src[" << b << "] Connection=" << displayVal << std::endl;
+//      if (!rtsp_available)
+//        return false;
+//    }
+
     for(int b = 0; b < this->_configs.source_count; b++) {
       std::string src_name = (std::string) "srcBin" + std::to_string(b);
       std::string uri = this->_configs.sources[b];
@@ -144,19 +309,8 @@ bool Pipeline::_create_pipeline()
         return false;
       }
     }
-  } else if (this->_configs.src_type.compare("v4l2") == 0) {
-    for(int b = 0; b < this->_configs.source_count; b++) {
-      std::string src_name = (std::string) "srcBin" + std::to_string(b);
-      std::string deviceId = this->_configs.sources[b];
-      LOG(INFO) << "src_name=" << src_name << ", deviceId=" << deviceId;
-      GstElement *srcBin = pipelineUtils::createV4l2SrcBin(src_name, deviceId);
-      if(!gst_bin_add(GST_BIN(this->pipeline), srcBin))
-      {
-        LOG(ERROR) << "Failed to add srcBin[" << b << "] to pipeline";
-        return false;
-      }
-    }
-  } else {
+  }
+  else {
     LOG(FATAL) << "Type of source has not been configured";
   }
 
@@ -190,7 +344,8 @@ bool Pipeline::_create_pipeline()
         LOG(FATAL) << "Could not add pad probe to sink_caps";
       gst_object_unref(probe_pad);
     }
-  } else if (this->_configs.sink_type.compare("rtmp") == 0) {
+  }
+  else if (this->_configs.sink_type.compare("rtmp") == 0) {
     for (int b=0; b < this->_configs.source_count; b++) {
       std::string binName = (std::string) "sinkBin" + std::to_string(b);
       GstElement* sinkBin = pipelineUtils::createSinkBinToRTMP(binName, this->_configs.sinks[b], this->_configs.sync);
@@ -211,8 +366,30 @@ bool Pipeline::_create_pipeline()
       gst_object_unref(probe_pad);
     }
   }
+  else if (this->_configs.sink_type.compare("file") == 0) {
+    for (int b=0; b < this->_configs.source_count; b++) {
+      std::string binName = (std::string) "sinkBin" + std::to_string(b);
+      GstElement* sinkBin = pipelineUtils::createSinkBinToFile(binName, this->_configs.sinks[b], this->_configs.sync);
+      if(!gst_bin_add(GST_BIN(this->pipeline), sinkBin))
+      {
+        LOG(ERROR) << "Failed to add sinkBin[" << b << "] to pipeline";
+        return false;
+      }
+
+      // add callbacks to display bounding boxes
+      GstElement *cb_element = gst_bin_get_by_name(GST_BIN(sinkBin), "sink_caps");
+      if(cb_element == NULL)
+        LOG(FATAL) << "Could not find sink_caps in sinkBin(" << b << ")";
+
+      GstPad *probe_pad = gst_element_get_static_pad(cb_element, "src");
+      if(!gst_pad_add_probe(probe_pad, GST_PAD_PROBE_TYPE_BUFFER, core::GstCallbacks::osd_callback, (gpointer)this->processor, NULL))
+        LOG(FATAL) << "Could not add pad probe to sink_caps";
+      gst_object_unref(probe_pad);
+    }
+  }
   else {
-    LOG(FATAL) << "Invalid sink type";
+    LOG(ERROR) << "Invalid sink type in config.json: choose one of the following (display, rtmp)";
+    return false;
   }
 
   // Add callbacks
@@ -227,7 +404,9 @@ bool Pipeline::_create_pipeline()
   // set element state to NULL and save diagram
   gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_NULL);
   // create picture diagram of the pipeline in its current state
-  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL");
+
+  if(GOOGLE_LOG_LEVEL==1)
+    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL");
 
   // link the source bins to inference bin
   for (int b=0; b<this->_configs.source_count; b++)
@@ -281,7 +460,8 @@ bool Pipeline::_create_pipeline()
   // set element state to READY
   gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_READY);
   // create picture diagram of the pipeline in its current state
-  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL_READY");
+  if(GOOGLE_LOG_LEVEL==1)
+    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL_READY");
 
   return true;
 }
@@ -297,20 +477,25 @@ void Pipeline::_run_pipeline()
   VLOG(DEEP) << "[2]Reference count of pipeline: " << GST_OBJECT_REFCOUNT(this->pipeline);
 
   gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_PLAYING);
-  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "READY_PLAYING");
+  if(GOOGLE_LOG_LEVEL==1)
+    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "READY_PLAYING");
   /* Runs loop until completion */
   g_main_loop_run(this->loop);
 
   /* Out of the main loop, clean up nicely */
   LOG(INFO) << "FINISHED PIPELINE";
   gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_NULL);
-  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "PLAYING_NULL");
+  if(GOOGLE_LOG_LEVEL==1)
+    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "PLAYING_NULL");
 
   gst_object_unref(GST_OBJECT(this->pipeline));
   g_source_remove(this->bus_watch_id);
   g_main_loop_unref(this->loop);
 
   LOG(INFO) << "Module finished ... notifying mediator to shut down";
+  if(this->_configs.sink_type == "file")
+    pipelineUtils::displayFilesSaved(this->_configs.sinks);
+
   this->_pipeline_finished();
   return;
 }
@@ -351,7 +536,7 @@ void Pipeline::_pipeline_finished()
   LOG(INFO) << "Stopping module";
   PipelineEvent *event = new PipelineEvent(core::events::Actions::STOP_MODULES, core::events::Module::MODULE_PIPELINE);
   this->_mediator->notify(event);
-  LOG(WARNING) << "Pipeline is finished, send signal to close application is being sent";
+  LOG(WARNING) << "Pipeline is finished, trigger safe application exit";
   VLOG(DEEP) << "[3]Reference count of pipeline: " << GST_OBJECT_REFCOUNT(this->pipeline);
 }
 
@@ -439,7 +624,9 @@ bool Pipeline::_create_pipeline_from_yaml(std::string file_path)
   // set element state to READY
   gst_element_set_state(GST_ELEMENT(this->pipeline), GST_STATE_READY);
   // create picture diagram of the pipeline in its current state
-  pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL_READY");
+  if(GOOGLE_LOG_LEVEL==1)
+    pipelineUtils::save_debug_dot(this->pipeline, "/src/logs", "NULL_READY");
+
   return true;
 }
 

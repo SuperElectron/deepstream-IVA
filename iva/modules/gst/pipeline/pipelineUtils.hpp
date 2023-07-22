@@ -5,12 +5,14 @@
 #include <fstream>
 #include <regex>
 #include <string>
+#include <unordered_set>
 
 #include "Application.h"
 #include "date/tz.h"
 #include "logging.hpp"
 
 namespace fs = std::filesystem;
+using njson = nlohmann::json;
 
 /**
  * @namespace pipelineUtils
@@ -103,7 +105,34 @@ inline static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data)
 
       gst_message_parse_error(msg, &error, &debug);
       g_free(debug);
-      LOG(INFO) << log_prefix << "Error: " << error->message;
+
+      std::string errMsg = (std::string) error->message;
+
+      if (errMsg.find("Could not open resource for reading and writing") != std::string::npos
+          ||
+          errMsg.find("Resource not found") != std::string::npos
+          )
+      {
+        LOG(ERROR) << log_prefix << "Error: " << error->message;
+        LOG(WARNING) << "\n\t*************************************************************************"
+                        "\n\tCheck that pipeline['sources'] and pipeline['sinks'] in config.json exist"
+                        "\n\t*************************************************************************\n\t"
+                        "file:     $ ls /path/to/video.mp4 \n\t"
+                        "rtsp:     $ gst-discoverer-1.0 rtsp://IP:PORT/stream \n\t"
+                        "rtmp:     $ gst-discoverer-1.0 rtmp://IP:PORT/stream \n\t";
+      }
+//      else if (errMsg.find("Could not open device") != std::string::npos)
+//      {
+//        LOG(ERROR) << log_prefix << "Error: " << error->message;
+//        LOG(WARNING) << "\n\t*************************************************************************"
+//                        "\n\tCheck that pipeline['sources'] config.json exist"
+//                        "\n\t*************************************************************************\n\t"
+//                        "v4l2src:  $ v4l2-ctl --all \n\t";
+//      }
+      else
+      {
+        LOG(ERROR) << log_prefix << "Error: " << error->message;
+      }
       g_error_free(error);
       g_main_loop_quit(loop);
       break;
@@ -533,7 +562,6 @@ inline GstElement* createSinkBinToRTMP(std::string binName, std::string uri, boo
 
   sink_queue = gst_element_factory_make("queue", "sink_queue");
   sink = gst_element_factory_make("rtmpsink", "sink");
-  LOG(WARNING) << "Setting RTMP uri:" << uri;
   g_object_set(sink,
                "sync", sync,
                "async", true,
@@ -563,6 +591,106 @@ inline GstElement* createSinkBinToRTMP(std::string binName, std::string uri, boo
   gst_pad_set_active (GST_PAD_CAST (inputGhostPad), 1);
   VLOG(DEBUG) << "Added ghost pad to bin=" << binName << " with pad=" << inputGhostPadName;
   return bin;
+}
+
+
+inline GstElement* createSinkBinToFile(std::string binName, std::string fileName, bool sync) {
+  // create bin
+  GstElement* bin = gst_bin_new(binName.c_str());
+  // create elements
+  GstElement *sink_nvconvert, *sink_convert, *sink_caps, *sink_encode, *sink_mux, *sink_queue, *sink;
+  sink_nvconvert = gst_element_factory_make("nvvideoconvert", "sink_nvconvert");
+  g_object_set(sink_nvconvert,
+               "compute-hw", 1,
+               NULL);
+  sink_convert = gst_element_factory_make("videoconvert", "sink_convert");
+  sink_caps = gst_element_factory_make("capsfilter", "sink_caps");
+  g_object_set(sink_caps,
+               "caps", gst_caps_from_string("video/x-raw,format=(string)YV12"),
+               NULL);
+  sink_encode = gst_element_factory_make("x264enc", "sink_encode");
+  sink_mux = gst_element_factory_make("flvmux", "sink_mux");
+
+  sink_queue = gst_element_factory_make("queue", "sink_queue");
+  sink = gst_element_factory_make("filesink", "sink");
+  g_object_set(sink,
+               "sync", sync,
+               "async", true,
+               "location", fileName.c_str(),
+               NULL);
+
+  // add elements to the bin
+  gst_bin_add_many(GST_BIN(bin), sink_nvconvert, sink_convert, sink_caps, sink_encode, sink_mux, sink_queue, sink, NULL);
+  if(!gst_element_link_many(sink_nvconvert, sink_convert, sink_caps, sink_encode, sink_mux, sink_queue, sink, NULL))
+    LOG(FATAL) << "Failed to add elements to bin=" << binName;
+
+  // create ghost pad at output for future linking
+  std::string inputPadName = "sink";
+  GstPad *inputBinPad = gst_element_get_static_pad(sink_nvconvert, inputPadName.c_str());
+  // Check if the pad was created.
+  if (inputBinPad == NULL)
+    LOG(FATAL) << "Could not get the sink_convert static pad=" << inputPadName;
+
+  std::string inputGhostPadName = "input0";
+  GstPad *inputGhostPad = gst_ghost_pad_new(inputGhostPadName.c_str(), inputBinPad);
+  if (inputGhostPad == NULL)
+    LOG(FATAL) << "Could not create the ghostPad for bin=" << binName << ", ghostPadName=" << inputGhostPadName;
+
+  if (!gst_element_add_pad(bin, inputGhostPad))
+    LOG(FATAL) << "Could not add the ghostPad to bin=" << binName << ", ghostPadName=" << inputGhostPadName;
+  gst_object_unref(GST_OBJECT(inputBinPad));
+  gst_pad_set_active (GST_PAD_CAST (inputGhostPad), 1);
+  VLOG(DEBUG) << "Added ghost pad to bin=" << binName << " with pad=" << inputGhostPadName;
+  return bin;
+}
+
+// todo: add this logic to a configuration sanitizer
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+/// CONFIG PARSER
+
+inline bool checkStringStartsWith(const std::string& str, const std::string& prefix) {
+  return str.size() >= prefix.size() && str.substr(0, prefix.size()) == prefix;
+}
+
+inline bool checkStringEndsWith(const std::string& str, const std::string& suffix) {
+  return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
+}
+
+inline bool areAllElementsUniqueStrings(const njson& jsonArray) {
+  std::unordered_set<std::string> uniqueElements;
+
+  for (const auto& element : jsonArray) {
+    if (!element.is_string()) {
+      LOG(WARNING) << "Expect string elements only";
+      return false; // Element is not a string
+    }
+
+    // Check if the element is already in the set (duplicate)
+    auto result = uniqueElements.insert(element.get<std::string>());
+    if (!result.second) {
+      LOG(WARNING) << "Found a duplicate entry: " << element.get<std::string>();
+      return false; // Duplicate found
+    }
+  }
+  return true;
+}
+
+inline bool areAllElementsStrings(const njson& jsonArray) {
+  for (const auto& element : jsonArray) {
+    if (!element.is_string()) {
+      return false; // Element is not a string
+    }
+  }
+  return true; // All elements are strings
+}
+
+inline void displayFilesSaved(const njson& jsonArray) {
+
+  for (size_t i = 0; i < jsonArray.size(); ++i) {
+    std::cout << "Saved file: " << jsonArray[i] << std::endl;
+  }
 }
 
 }  // namespace pipelineUtils

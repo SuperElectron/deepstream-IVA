@@ -22,6 +22,48 @@ core::Processing::~Processing() {}
 bool Processing::set_configs(njson conf)
 {
   try {
+
+    if(!conf["topic"].is_string()){
+      LOG(WARNING) << "Invalid config.json element! processing['topic'] must be a string";
+      return false;
+    }
+    if(!conf["device_id"].is_string()) {
+      LOG(WARNING) << "Invalid config.json element! processing['device_id'] must be a string";
+      return false;
+    }
+    if(!conf["model"].is_string()) {
+      LOG(WARNING) << "Invalid config.json element! processing['model'] must be a string";
+      return false;
+    }
+    if(!conf["model_type"].is_string()){
+      LOG(WARNING) << "Invalid config.json element! processing['model_type'] must be a string";
+      return false;
+    }
+    if(!conf["publish"].is_boolean()){
+      LOG(WARNING) << "Invalid config.json element! processing['publish'] must be a boolean";
+      return false;
+    }
+    if(!conf["save"].is_boolean()){
+      LOG(WARNING) << "Invalid config.json element! processing['save'] must be a boolean";
+      return false;
+    }
+    if(!conf["display_detections"].is_boolean()){
+      LOG(WARNING) << "Invalid config.json element! processing['display_detections'] must be a boolean";
+      return false;
+    }
+    if(!conf["bbox_line_thickness"].is_number_integer()){
+      LOG(WARNING) << "Invalid config.json element! processing['bbox_line_thickness'] must be an integer";
+      return false;
+    }
+    if(!conf["min_confidence_to_display"].is_number_integer()){
+      LOG(WARNING) << "Invalid config.json element! processing['min_confidence_to_display'] must be an integer";
+      return false;
+    }
+    if(!conf["font_size"].is_number_integer()){
+      LOG(WARNING) << "Invalid config.json element! processing['font_size'] must be an integer";
+      return false;
+    }
+
     core::ProcessingSettings configs = {
         .topic = conf["topic"],
         .device_id = conf["device_id"],

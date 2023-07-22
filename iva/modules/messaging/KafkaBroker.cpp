@@ -68,6 +68,19 @@ KafkaBroker::~KafkaBroker() {}
 bool KafkaBroker::set_configs(njson conf)
 {
   try {
+    if(!conf["topic"].is_string()){
+      LOG(WARNING) << "Invalid config.json element! messaging['topic'] must be a string";
+      return false;
+    }
+    if(!conf["kafka_server_ip"].is_string()) {
+      LOG(WARNING) << "Invalid config.json element! messaging['kafka_server_ip'] must be a string";
+      return false;
+    }
+    if(!conf["enable"].is_boolean()) {
+      LOG(WARNING) << "Invalid config.json element! messaging['enable'] must be a boolean";
+      return false;
+    }
+
     // unpack array of topics from config.json
     std::set<std::string> topics;
     std::string topics_display;

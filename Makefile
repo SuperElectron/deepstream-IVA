@@ -139,7 +139,7 @@ start_kafka:
 		$(KAFKA_MODULE)
 
 start_camera:
-	docker run -it --name $(CAMERA_MODULE) \
+	docker run -it --rm --name $(CAMERA_MODULE) \
 		--net $(PROJECT_NAME)_server \
 		--ip $(SUBNET_BASE).2 \
 		--user dev \
