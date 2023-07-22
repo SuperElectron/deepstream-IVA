@@ -83,6 +83,7 @@ if(YAML_CONFIGS)
     add_compile_definitions(YAML_CONFIGS=TRUE)
     set(YAML_CONFIGS "TRUE")
     ADD_DEFINITIONS(-DYAML_CONFIGS=TRUE)
+endif()
 
 ################################################
 # Configure project executable and library (static or shared)
