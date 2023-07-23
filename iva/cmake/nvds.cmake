@@ -26,7 +26,7 @@ set_target_properties(nvds PROPERTIES
         IMPORTED_LOCATION ${NVDS_INSTALL_DIR}/lib/libnvdsgst_meta.so
         IMPORTED_LOCATION ${NVDS_INSTALL_DIR}/lib/libnvds_meta.so
         IMPORTED_LOCATION ${NVDS_INSTALL_DIR}/lib/libnvds_yml_parser.so
-        IMPORTED_LOCATION ${NVDS_INSTALL_DIR}/lib/libnvbufsurface.so
+#        IMPORTED_LOCATION ${NVDS_INSTALL_DIR}/lib/libnvbufsurface.so
 #        IMPORTED_LOCATION ${NVDS_INSTALL_DIR}/lib/libnvbufsurftransform.so
         )
 
