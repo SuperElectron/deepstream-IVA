@@ -27,7 +27,7 @@ set_target_properties(nvds PROPERTIES
         IMPORTED_LOCATION ${NVDS_INSTALL_DIR}/lib/libnvds_meta.so
         IMPORTED_LOCATION ${NVDS_INSTALL_DIR}/lib/libnvds_yml_parser.so
         IMPORTED_LOCATION ${NVDS_INSTALL_DIR}/lib/libnvbufsurface.so
-        IMPORTED_LOCATION ${NVDS_INSTALL_DIR}/lib/libnvbufsurftransform.so
+#        IMPORTED_LOCATION ${NVDS_INSTALL_DIR}/lib/libnvbufsurftransform.so
         )
 
 target_link_libraries(${PROJECT_NAME}_LIB PUBLIC
@@ -37,7 +37,7 @@ target_link_libraries(${PROJECT_NAME}_LIB PUBLIC
         nvds_meta
         nvds_yml_parser
         nvbufsurface
-        nvbufsurftransform
+#        nvbufsurftransform
         cuda
         )
 
