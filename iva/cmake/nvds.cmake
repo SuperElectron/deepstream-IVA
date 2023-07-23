@@ -36,7 +36,7 @@ target_link_libraries(${PROJECT_NAME}_LIB PUBLIC
         nvdsgst_meta
         nvds_meta
         nvds_yml_parser
-        nvbufsurface
+#        nvbufsurface
 #        nvbufsurftransform
         cuda
         )
