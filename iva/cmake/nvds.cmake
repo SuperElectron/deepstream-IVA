@@ -15,7 +15,7 @@ include_directories(
 target_link_directories(${PROJECT_NAME}_LIB PUBLIC
         ${NVDS_INSTALL_DIR}/lib
         /usr/local/cuda/lib64
-        /usr/local/cuda/targets/x86_64-linux/lib
+        /usr/local/cuda/targets/${BUILD_ARCHITECTURE}-linux/lib
         )
 
 message(STATUS "Using CUDA dir /usr/local/cuda/lib64 AND /usr/local/cuda/include")
