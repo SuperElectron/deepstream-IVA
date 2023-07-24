@@ -59,10 +59,10 @@ network:
 build: build_kafka build_iva network
 
 build_iva:
-	docker buildx build --build-arg DOCKER_BASE=$(DOCKER_BASE) -t $(IVA_MODULE) $(DOCKER_DIR)/$(IVA_MODULE)
+	docker buildx build --build-arg DOCKER_BASE=$(DOCKER_BASE) -t $(IVA_BASE_IMG)-base $(DOCKER_DIR)/$(IVA_MODULE)
 build_iva_prod:
 	docker buildx build \
-		--build-arg IVA_BASE_IMG=$(IVA_BASE_IMG) \
+		--build-arg IVA_BASE_IMG=$(IVA_BASE_IMG)-base \
 		--build-arg BRANCH=$(BRANCH) \
 		--build-arg TOKEN=$(TOKEN) \
 		-t $(IVA_BASE_IMG):$(PROD_TAG) \
@@ -73,17 +73,16 @@ build_kafka:
 	docker buildx build \
 		--build-arg KAFKA_BROKER=$(HOST_IP):9092 \
 		--build-arg ARCHITECTURE=$(ARCHITECTURE) \
-		-t $(KAFKA_MODULE) \
+		-t GIT_CR/$(KAFKA_MODULE):$(PROD_TAG) \
 		$(DOCKER_DIR)/$(KAFKA_MODULE)
 
 build_kafkacat:
-	docker buildx build -t $(KAFKACAT_MODULE) $(DOCKER_DIR)/$(KAFKA_MODULE)/$(KAFKACAT_MODULE)
+	docker buildx build -t GIT_CR/$(KAFKACAT_MODULE):$(PROD_TAG) $(DOCKER_DIR)/$(KAFKA_MODULE)/$(KAFKACAT_MODULE)
 build_camera:
-	docker buildx build -t $(CAMERA_MODULE) $(DOCKER_DIR)/$(CAMERA_MODULE)
+	docker buildx build -t -t GIT_CR/$(CAMERA_MODULE):$(PROD_TAG) $(DOCKER_DIR)/$(CAMERA_MODULE)
 
 # RUN COMMANDS
 start: network start_iva start_kafka
-
 
 start_iva:
 	docker run -d --name $(IVA_MODULE) \
