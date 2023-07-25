@@ -2,21 +2,6 @@
 
 # Check following part for how to download the TLT 3.0 models:
 
-# For Faster-RCNN / YoloV3 / YoloV4 /SSD / DSSD / RetinaNet/ EfficientDet0/ UNET/:
-# wget https://nvidia.box.com/shared/static/taqr2y52go17x1ymaekmg6dh8z6d43wr -O models.zip
-
-# For peopleSemSegNet:
-# wget --content-disposition https://api.ngc.nvidia.com/v2/models/nvidia/tao/peoplesemsegnet/versions/deployable_v1.0/zip \
-# -O peoplesemsegnet_deployable_v1.0.zip
-
-# For peopleSegNet V2:
-# wget --content-disposition https://api.ngc.nvidia.com/v2/models/nvidia/tao/peoplesegnet/versions/deployable_v2.0/zip \
-# -O peoplesegnet_deployable_v2.0.zip
-
-# For old peopleSegNet:
-# wget --content-disposition https://api.ngc.nvidia.com/v2/models/nvidia/tao/peoplesegnet/versions/deployable_v1.0/zip \
-# -O peoplesegnet_deployable_v1.0.zip
-
 echo "==================================================================="
 echo "[models for training]begin download models for Faster-RCNN / YoloV3 / YoloV4 /SSD / DSSD / RetinaNet/ UNET/"
 echo "==================================================================="

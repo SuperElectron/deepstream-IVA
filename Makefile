@@ -22,9 +22,10 @@ endif
 help:
 	@echo "----------------------"
 	@echo "++   PROJECT VARS"
-	@echo "++   	ARCHITECTURE: $(ARCHITECTURE)"
-	@echo "++   	PROJECT_NAME: $(PROJECT_NAME)"
-	@echo "++   	DOCKER_BASE: $(DOCKER_BASE)"
+	@echo "++   	ARCHITECTURE   |    $(ARCHITECTURE)"
+	@echo "++   	PROJECT_NAME   |    $(PROJECT_NAME)"
+	@echo "++   	DOCKER_BASE    |    $(DOCKER_BASE)"
+	@echo "++   	HOST_IP        |   $(HOST_IP)"
 	@echo "----------------------"
 	@echo "++   PROJECT COMMANDS"
 	@echo "++ 	[create Doxygen docs]		make docs"
@@ -85,7 +86,7 @@ build_camera:
 start: network start_iva start_kafka
 
 start_iva:
-	docker run -d --name $(IVA_MODULE) \
+	docker run -it --name $(IVA_MODULE) \
 		--net $(PROJECT_NAME)_server \
 		--ip $(SUBNET_BASE).3 \
 	    --user=0 \
@@ -101,7 +102,7 @@ start_iva:
 	    -v $(PROJECT_DIR)/$(IVA_MODULE):/src \
 	    -v $(PROJECT_DIR)/.cache:/tmp/.cache \
 	    -w /src \
-		$(IVA_MODULE):latest bash -c "sleep infinity"
+		$(IVA_BASE_IMG)-base
 
 start_iva_prod:
 	xhost +;
@@ -132,7 +133,6 @@ start_kafkacat:
 start_kafka:
 	docker run -it --name $(KAFKA_MODULE) \
 		--net=host \
-		-v $(PROJECT_DIR)/.cache:/tmp \
 		-w /opt/kafka \
 		$(KAFKA_MODULE)
 

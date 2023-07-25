@@ -85,7 +85,7 @@ bool KafkaBroker::set_configs(njson conf)
     std::set<std::string> topics;
     std::string topics_display;
     ProducerSettings producerSettings = {
-        .topic = conf["topic"].get<std::string>(),
+        .topic = "test",
         .kafka_server_ip = conf["kafka_server_ip"],
     };
 

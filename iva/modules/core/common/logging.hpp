@@ -51,8 +51,7 @@ public:
 #ifdef ENABLE_DOT
         auto gst_dot = logs_dir + "/gst_debug_dot/";
 #endif
-        auto media_dir = (std::string) "/tmp/.cache";
-        auto video = media_dir + "/video/";
+        auto media_dir = (std::string) "/tmp/.cache/saved_media";
         auto images = media_dir + "/image/";
         auto payloads = media_dir + "/payload/";
 
@@ -62,7 +61,7 @@ public:
           fs::permissions(logs_dir, fs::perms::all);
         }
         if (!fs::exists(logs_dir_info)) {
-          // subfolders for LOG(<level>)
+          // sub-folders for LOG(<level>)
           fs::create_directory(logs_dir_info);
           fs::permissions(logs_dir_info, fs::perms::all);
         }

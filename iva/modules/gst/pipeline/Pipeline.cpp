@@ -145,10 +145,8 @@ bool Pipeline::set_configs(njson conf)
     LOG(FATAL) << "Could not find /tmp/.cache/configs/model/detection.yml. Ensure that .cache/configs/model has detection.yml before running the container!";
   if(!tracker_f.good())
     LOG(FATAL) << "Could not find /tmp/.cache/configs/model/tracker.yml. Ensure that .cache/configs/model has tracker.yml before running the container!";
-//
-//  /**
-//   * SANITIZE INPUTS
-//   */
+
+  /* SANITIZE INPUTS */
   bool ret = true;
 
   //ensure the sources are correct

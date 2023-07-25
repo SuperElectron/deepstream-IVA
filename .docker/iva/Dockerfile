@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:1.2
 ARG DOCKER_BASE
-FROM nvcr.io/nvidia/deepstream$DOCKER_BASE:6.1.1-samples
+FROM nvcr.io/nvidia/deepstream$DOCKER_BASE:6.1-devel
 
 LABEL maintainer="AlphaWise <matmccann@gmail.com>"
 
@@ -30,8 +30,9 @@ RUN chmod 777 /start -R
 RUN cd /start/scripts && ./install_cmake.sh
 RUN cd /start/scripts && ./install.sh
 RUN cd /start/scripts && ./install_messaging.sh
-RUN cd /start/scripts && ./install_cudart.sh
-RUN --mount=type=cache,target=/var/cache/apt apt-get install -y cuda
+#RUN cd /start/scripts && ./install_cudart.sh
+##RUN cd /start/scripts && ./ds_deepstream_yolo.sh
+#RUN --mount=type=cache,target=/var/cache/apt apt-get install -y cuda
 # clean up downloaded packages
 RUN rm -rf /var/lib/apt/lists/*
 RUN rm -rf ~/.cache/gstreamer-1.0/registry.*.bin && apt-get update -yqq
@@ -40,6 +41,5 @@ RUN rm -rf ~/.cache/gstreamer-1.0/registry.*.bin && apt-get update -yqq
 HEALTHCHECK CMD ping -c3 -i 10 127.0.0.1
 # default location for `docker exec`
 WORKDIR /src
-RUN mkdir -p /models
 # default command
 CMD ["bash"]

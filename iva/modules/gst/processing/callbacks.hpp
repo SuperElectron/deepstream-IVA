@@ -240,13 +240,13 @@ inline GstPadProbeReturn save_image_to_disk(GstPad *pad, GstPadProbeInfo *info, 
     cv::Mat input_frame(cv::Size(width, height), CV_8UC3, (char *)map.data, cv::Mat::AUTO_STEP);
     cv::imwrite(img_name.c_str(), input_frame);
   }
-  else if (video_format.compare("NV12") == 0) {
-    VLOG(DEBUG) << "Detected NV12 caps format=" << video_format;
-    cv::Mat RGB = getRGBFrame(map, (gint)0);
-    if (RGB.empty())
-      LOG(FATAL) << "Could not unpack Left image";
-    cv::imwrite(img_name.c_str(), RGB);
-  }
+//  else if (video_format.compare("NV12") == 0) {
+//    VLOG(DEBUG) << "Detected NV12 caps format=" << video_format;
+//    cv::Mat RGB = getRGBFrame(map, (gint)0);
+//    if (RGB.empty())
+//      LOG(FATAL) << "Could not unpack Left image";
+//    cv::imwrite(img_name.c_str(), RGB);
+//  }
   else if (video_format.compare("YV12") == 0) {
     /**
      * openCV type conversions

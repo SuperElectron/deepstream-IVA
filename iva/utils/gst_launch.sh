@@ -1,8 +1,8 @@
 #!/bin/bash
 
 export THRESHOLD=0.5
-export VIDEO1="/opt/nvidia/deepstream/deepstream/samples/streams/sample_720p.mp4"
-export DETECTION_MODEL="/src/configs/model/nvds/detection.yml"
+export VIDEO1="/tmp/.cache/sample_videos/people-walking-trim-h264.mp4"
+export DETECTION_MODEL="/tmp/.cache/configs/model/detection.yml"
 export TRACKER="/opt/nvidia/deepstream/deepstream/samples/configs/deepstream-app/config_tracker_NvDCF_perf.yml"
 export TRACKER_L="/opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so"
 
