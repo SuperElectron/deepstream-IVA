@@ -191,7 +191,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
     //////////////////////////
     LOG(WARNING) << "[probe_callback] create meta payload [generate_ts_epoch]";
     //////////////////////////
-    payload["meta"]["timestamp"] = processUtils::generate_timestamp();
+    payload["meta"]["timestamp"] = processUtils::generate_timestamp(this->_tz);
     //////////////////////////
     LOG(WARNING) << "[probe_callback] create meta payload [generate_timestamp]";
     //////////////////////////
