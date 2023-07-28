@@ -84,6 +84,8 @@ bool Processing::set_configs(njson conf)
     return false;
   }
 
+  // read timezone from /etc/timezone
+  this->_tz = processUtils::read_timezone_from_system();
   return true;
 }
 

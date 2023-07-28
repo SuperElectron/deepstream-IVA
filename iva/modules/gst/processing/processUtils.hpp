@@ -34,6 +34,30 @@ struct BoundingBox {
 };
 
 
+inline std::string read_timezone_from_system()
+{
+  std::string file_path = "/etc/timezone";
+  std::string timezone;
+
+  std::ifstream file_stream(file_path);
+  if (file_stream.is_open()) {
+    // Read the entire content of the file into the timezone string
+    timezone.assign((std::istreambuf_iterator<char>(file_stream)), std::istreambuf_iterator<char>());
+
+    // Remove any trailing newline characters or whitespaces
+    timezone.erase(std::remove_if(timezone.begin(), timezone.end(), ::isspace), timezone.end());
+
+    // Close the file stream
+    file_stream.close();
+
+    // Output the contents of the file
+    LOG(INFO) << "Got TZ value from /etc/timezone: " << timezone;
+  } else {
+    LOG(FATAL) << "Could not get TZ value from /etc/timezone: " << timezone;
+  }
+  return timezone;
+}
+
 /**
  * @brief generates a unix timestamp
  *
@@ -52,13 +76,19 @@ inline long generate_ts_epoch()
  *
  * @return  std::string  generates a human readable timestamp (e.g. 2023-05-01T14:22:55.954:PST )
  */
-inline std::string generate_timestamp()
+inline std::string generate_timestamp(std::string tz)
 {
     // export TZ=$(cat /etc/timezone) in terminal before running the application!
-    char *TZ = getenv("TZ");
-    auto current_time = std::chrono::system_clock::now();
-    auto myzone_time = date::make_zoned(TZ, floor<std::chrono::milliseconds>(current_time));
-    auto t_formatted = date::format("%Y-%m-%dT%H:%M:%S:%Z", myzone_time);
+    std::string t_formatted;
+    try{
+      auto current_time = std::chrono::system_clock::now();
+      auto myzone_time = date::make_zoned(tz.c_str(), floor<std::chrono::milliseconds>(current_time));
+      t_formatted = date::format("%Y-%m-%dT%H:%M:%S:%Z", myzone_time);
+    }
+    catch (const std::exception &e) {
+      LOG(FATAL) << "Failed to generate timestamp: ErrMsg=" << e.what();
+    }
+
     return t_formatted;
 }
 
