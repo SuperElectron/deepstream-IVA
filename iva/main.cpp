@@ -32,7 +32,6 @@ int main(int argc, char *argv[])
 
   /* Set up logging. Note that GOOGLE_LOG_LEVEL is set in CMakeLists.txt */
   std::cout << "FLAGS_minloglevel=" << FLAGS_minloglevel << std::endl;
-  FLAGS_minloglevel = GOOGLE_LOG_LEVEL;
   core::Logging::init(argv);
   google::InstallFailureSignalHandler();
 
