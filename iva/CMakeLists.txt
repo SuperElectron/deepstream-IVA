@@ -91,16 +91,16 @@ set(SRC_FILE main.cpp)
 add_executable(${PROJECT_NAME} ${SRC_FILE})
 
 
-# cmake .. -D LOG_LEVEL=2 (0=INFO, 1=WARNING, 2=ERROR, 3=FATAL)
+# cmake .. -D MY_LOG_LEVEL=2 (0=INFO, 1=WARNING, 2=ERROR, 3=FATAL)
 # Check if the log level is specified as a CMake variable
-if (DEFINED LOG_LEVEL)
-    message(STATUS "Setting log level to: ${LOG_LEVEL}")
+if (DEFINED MY_LOG_LEVEL)
+    message(STATUS "Setting log level to: ${MY_LOG_LEVEL}")
 else()
     message(STATUS "Setting log level to: 1")
-    set(LOG_LEVEL 1)
+    set(MY_LOG_LEVEL 1)
 endif()
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE LOG_LEVEL=${LOG_LEVEL})
+target_compile_definitions(${PROJECT_NAME} PRIVATE MY_LOG_LEVEL=${MY_LOG_LEVEL})
 
 ################################################
 # Test configuration
