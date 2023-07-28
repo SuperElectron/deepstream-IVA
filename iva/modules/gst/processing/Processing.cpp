@@ -174,12 +174,24 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
     //////////////////////////
     // save meta information for all objects detected
     payload["topic"] = this->_configs.topic;
+    //////////////////////////
+    LOG(WARNING) << "[probe_callback] create meta payload [topic]";
+    //////////////////////////
     payload["meta"]["device_id"] = this->_configs.device_id;
+    //////////////////////////
+    LOG(WARNING) << "[probe_callback] create meta payload [device_id]";
+    //////////////////////////
     payload["meta"]["frame"] = frame_meta->frame_num;
+    //////////////////////////
+    LOG(WARNING) << "[probe_callback] create meta payload [frame_num]";
+    //////////////////////////
     payload["meta"]["utc"] = processUtils::generate_ts_epoch();
+    //////////////////////////
+    LOG(WARNING) << "[probe_callback] create meta payload [generate_ts_epoch]";
+    //////////////////////////
     payload["meta"]["timestamp"] = processUtils::generate_timestamp();
     //////////////////////////
-    LOG(WARNING) << "[probe_callback] create meta payload2";
+    LOG(WARNING) << "[probe_callback] create meta payload [generate_timestamp]";
     //////////////////////////
     payload["meta"]["model"] = this->_configs.model;
     payload["meta"]["detection_type"] = this->_configs.model_type;
