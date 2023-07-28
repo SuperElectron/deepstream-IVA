@@ -24,8 +24,8 @@ int main(int argc, char *argv[])
   if(!success)
     return EXIT_FAILURE;
 
-#ifdef GOOGLE_LOG_LEVEL
-  FLAGS_minloglevel = GOOGLE_LOG_LEVEL;
+#ifdef MY_LOG_LEVEL
+  FLAGS_minloglevel = MY_LOG_LEVEL;
 #else
   FLAGS_minloglevel = 1; // Default log level
 #endif

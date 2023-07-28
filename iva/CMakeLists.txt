@@ -67,9 +67,9 @@ option(ENABLE_DOT "Create image from .dot when pipeline changes state" OFF)
 
 # cmake .. -D LOG_LEVEL=2 (0=INFO, 1=WARNING, 2=ERROR, 3=FATAL)
 if(DEFINED GOOGLE_LOG_LEVEL)
-    add_definitions(-DGOOGLE_LOG_LEVEL=${GOOGLE_LOG_LEVEL})
+    add_definitions(-DMY_LOG_LEVEL=${GOOGLE_LOG_LEVEL})
 else()
-    add_definitions(-DGOOGLE_LOG_LEVEL=${GOOGLE_LOG_LEVEL})
+    add_definitions(-DMY_LOG_LEVEL=1)
 endif()
 message(STATUS "Set Google LOG level to ${GOOGLE_LOG_LEVEL}")
 
