@@ -24,8 +24,10 @@ int main(int argc, char *argv[])
   if(!success)
     return EXIT_FAILURE;
 
-
+#ifdef MY_LOG_LEVEL
   FLAGS_minloglevel = MY_LOG_LEVEL;
+#else
+FLAGS_minloglevel = 1;
   /* Set up logging. Note that GOOGLE_LOG_LEVEL is set in CMakeLists.txt */
   std::cout << "FLAGS_minloglevel=" << FLAGS_minloglevel << std::endl;
   core::Logging::init(argv);
