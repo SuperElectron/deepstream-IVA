@@ -95,11 +95,12 @@ add_executable(${PROJECT_NAME} ${SRC_FILE})
 # Check if the log level is specified as a CMake variable
 if (DEFINED GOOGLE_LOG_LEVEL)
     message(STATUS "Setting log level to: ${GOOGLE_LOG_LEVEL}")
-    target_compile_definitions(${PROJECT_NAME} PRIVATE APP_LOG_LEVEL=${GOOGLE_LOG_LEVEL})
 else()
     message(STATUS "Setting log level to default: 1")
-    target_compile_definitions(${PROJECT_NAME} PRIVATE APP_LOG_LEVEL=1)
+    set(GOOGLE_LOG_LEVEL 1)
 endif()
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE GOOGLE_LOG_LEVEL=${GOOGLE_LOG_LEVEL})
 
 ################################################
 # Test configuration
