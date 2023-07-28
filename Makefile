@@ -17,7 +17,6 @@ ifeq ($(shell uname -m),x86_64)
  	PROD_TAG=arm64
 endif
 
-
 #################################################
 ## HELPERS
 help:
