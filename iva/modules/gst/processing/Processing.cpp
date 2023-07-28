@@ -184,10 +184,17 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
     payload["meta"]["resolution"]["height"] = height;
     payload["meta"]["resolution"]["width"] = width;
 
+    //////////////////////////
+    LOG(WARNING) << "[probe_callback] createDDD meta payload";
+    //////////////////////////
+
     // loop through detected objects
     int objects_detected = 0;
     for (object_list = frame_meta->obj_meta_list; object_list != NULL; object_list = object_list->next)
     {
+      //////////////////////////
+      LOG(WARNING) << "[probe_callback] create inference payload [unpack]";
+      //////////////////////////
       // cast data and add inference objects to payload
       NvDsObjectMeta *obj_meta = (NvDsObjectMeta *)(object_list->data);
       NvDsComp_BboxInfo tracker_bbox_info = obj_meta->tracker_bbox_info;
@@ -212,20 +219,25 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
        *  (0,1)                (1,1)
        */
       //////////////////////////
-      LOG(WARNING) << "[probe_callback] create inference";
+      LOG(WARNING) << "[probe_callback] create inference [bbox]";
       //////////////////////////
       float xmax = tracker_boxes.left + tracker_boxes.width;
       float xmin = tracker_boxes.left;
       float ymax = tracker_boxes.top + tracker_boxes.height;
       float ymin = tracker_boxes.top;
       float confidence = obj_meta->confidence * 100;
-
+      //////////////////////////
+      LOG(WARNING) << "[probe_callback] create inference [payload]";
+      //////////////////////////
       payload["inference"][objects_detected]["bbox"] = {{"x_max", (int)xmax}, {"x_min", (int)xmin}, {"y_max", (int)ymax}, {"y_min", (int)ymin}};
       payload["inference"][objects_detected]["confidence"] = (int) confidence;
       payload["inference"][objects_detected]["label"] = (std::string) obj_meta->obj_label;
       payload["inference"][objects_detected]["tracking_id"] = (int) obj_meta->object_id;
       payload["inference"][objects_detected]["camera_id"] = (int) frame_meta->source_id;
       objects_detected += 1;
+      //////////////////////////
+      LOG(WARNING) << "[probe_callback] create inference [finisheddd]";
+      //////////////////////////
     } // parse next detection for this streamId
 
     //////////////////////////
