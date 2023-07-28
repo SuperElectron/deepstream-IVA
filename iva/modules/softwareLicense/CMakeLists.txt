@@ -33,7 +33,7 @@ if( ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64" )
 else(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64" )
     set(LIBRARY_FOLDER "${CMAKE_BUILD_DIRECTORY}/.cache/lib/aarch64/libLexActivator.so")
 endif()
-
+message(STATUS "LIBRARY_FOLDER for libLexActivator.so: ${LIBRARY_FOLDER}")
 
 # Set linker flags for dynamic linking
 set(LDFLAGS "-Wl,-rpath,${LIBRARY_FOLDER};-L ${LIBRARY_FOLDER};-lLexActivator")
