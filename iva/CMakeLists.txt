@@ -91,16 +91,16 @@ set(SRC_FILE main.cpp)
 add_executable(${PROJECT_NAME} ${SRC_FILE})
 
 
-# cmake .. -D GOOGLE_LOG_LEVEL=2 (0=INFO, 1=WARNING, 2=ERROR, 3=FATAL)
+# cmake .. -D LOG_LEVEL=2 (0=INFO, 1=WARNING, 2=ERROR, 3=FATAL)
 # Check if the log level is specified as a CMake variable
-if (DEFINED GOOGLE_LOG_LEVEL)
-    message(STATUS "Setting log level to: ${GOOGLE_LOG_LEVEL}")
+if (DEFINED LOG_LEVEL)
+    message(STATUS "Setting log level to: ${LOG_LEVEL}")
 else()
-    message(STATUS "Setting log level to default: 1")
-    set(GOOGLE_LOG_LEVEL 1)
+    message(STATUS "Setting log level to: 1")
+    set(LOG_LEVEL 1)
 endif()
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE GOOGLE_LOG_LEVEL=${GOOGLE_LOG_LEVEL})
+target_compile_definitions(${PROJECT_NAME} PRIVATE LOG_LEVEL=${LOG_LEVEL})
 
 ################################################
 # Test configuration
