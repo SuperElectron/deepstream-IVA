@@ -121,6 +121,9 @@ void core::Processing::set_up(int source_count)
 bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
 {
 
+  //////////////////////////
+  LOG(WARNING) << "[probe_callback] start";
+  //////////////////////////
   GstVideoInfo video_info;
   GstCaps *caps = gst_pad_get_current_caps(pad);
   if (!gst_video_info_from_caps(&video_info, caps)) {
@@ -151,6 +154,10 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
     return false;
   }
 
+  //////////////////////////
+  LOG(WARNING) << "[probe_callback] buffer";
+  //////////////////////////
+
   NvDsMetaList *frame_list = NULL;
   NvDsMetaList *object_list = NULL;
 
@@ -162,7 +169,9 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
   {
     njson payload;
     NvDsFrameMeta *frame_meta = (NvDsFrameMeta *)(frame_list->data);
-
+    //////////////////////////
+    LOG(WARNING) << "[probe_callback] create meta payload";
+    //////////////////////////
     // save meta information for all objects detected
     payload["topic"] = this->_configs.topic;
     payload["meta"]["device_id"] = this->_configs.device_id;
@@ -202,6 +211,9 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
        *
        *  (0,1)                (1,1)
        */
+      //////////////////////////
+      LOG(WARNING) << "[probe_callback] create inference";
+      //////////////////////////
       float xmax = tracker_boxes.left + tracker_boxes.width;
       float xmin = tracker_boxes.left;
       float ymax = tracker_boxes.top + tracker_boxes.height;
@@ -216,6 +228,9 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
       objects_detected += 1;
     } // parse next detection for this streamId
 
+    //////////////////////////
+    LOG(WARNING) << "[probe_callback] create payload for this streamID";
+    //////////////////////////
     // if this source has inference detections, act on it
     if (payload.contains("inference"))
     {
