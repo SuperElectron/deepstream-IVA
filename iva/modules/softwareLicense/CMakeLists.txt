@@ -20,14 +20,11 @@ target_include_directories(${PROJECT_NAME}_LIB PUBLIC ${CMAKE_CURRENT_SOURCE_DIR
 target_sources(${PROJECT_NAME}_LIB PUBLIC ${HEADERS} ${SRC} )
 
 # set location to where library folder is located
-
-file(WRITE /usr/local/libLexActivator.so "")
 if( ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64" )
-    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/libraries/x86_64/libLexActivator.so" DESTINATION /usr/local/lib)
+    set(LIBRARY_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/libraries/x86_64/libLexActivator.so" )
 else(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64" )
-    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/libraries/aarch64/libLexActivator.so" DESTINATION /usr/local/lib)
+    set(LIBRARY_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/libraries/aarch64/libLexActivator.so" )
 endif()
-set(LIBRARY_FOLDER "/usr/local/lib" )
 
 # Set linker flags for dynamic linking
 set(LDFLAGS "-Wl,-rpath,${LIBRARY_FOLDER};-L ${LIBRARY_FOLDER};-lLexActivator")
