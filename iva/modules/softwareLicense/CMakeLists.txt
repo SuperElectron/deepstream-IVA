@@ -21,10 +21,11 @@ target_sources(${PROJECT_NAME}_LIB PUBLIC ${HEADERS} ${SRC} )
 
 # set location to where library folder is located
 if( ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64" )
-    set(LIBRARY_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/libraries/x86_64/libLexActivator.so" )
+    set(LIBRARY_FOLDER"${CMAKE_BUILD_DIRECTORY}/lib/x86_64/libLexActivator.so")
 else(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64" )
-    set(LIBRARY_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/libraries/aarch64/libLexActivator.so" )
+    set(LIBRARY_FOLDER"${CMAKE_BUILD_DIRECTORY}/lib/aarch64/libLexActivator.so")
 endif()
+
 
 # Set linker flags for dynamic linking
 set(LDFLAGS "-Wl,-rpath,${LIBRARY_FOLDER};-L ${LIBRARY_FOLDER};-lLexActivator")
