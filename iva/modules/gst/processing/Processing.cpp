@@ -123,9 +123,6 @@ void core::Processing::set_up(int source_count)
 bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
 {
 
-  //////////////////////////
-  LOG(WARNING) << "[probe_callback] start";
-  //////////////////////////
   GstVideoInfo video_info;
   GstCaps *caps = gst_pad_get_current_caps(pad);
   if (!gst_video_info_from_caps(&video_info, caps)) {
@@ -156,10 +153,6 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
     return false;
   }
 
-  //////////////////////////
-  LOG(WARNING) << "[probe_callback] buffer";
-  //////////////////////////
-
   NvDsMetaList *frame_list = NULL;
   NvDsMetaList *object_list = NULL;
 
@@ -171,47 +164,23 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
   {
     njson payload;
     NvDsFrameMeta *frame_meta = (NvDsFrameMeta *)(frame_list->data);
-    //////////////////////////
-    LOG(WARNING) << "[probe_callback] create meta payload";
-    //////////////////////////
+
     // save meta information for all objects detected
     payload["topic"] = this->_configs.topic;
-    //////////////////////////
-    LOG(WARNING) << "[probe_callback] create meta payload [topic]";
-    //////////////////////////
     payload["meta"]["device_id"] = this->_configs.device_id;
-    //////////////////////////
-    LOG(WARNING) << "[probe_callback] create meta payload [device_id]";
-    //////////////////////////
     payload["meta"]["frame"] = frame_meta->frame_num;
-    //////////////////////////
-    LOG(WARNING) << "[probe_callback] create meta payload [frame_num]";
-    //////////////////////////
     payload["meta"]["utc"] = processUtils::generate_ts_epoch();
-    //////////////////////////
-    LOG(WARNING) << "[probe_callback] create meta payload [generate_ts_epoch]";
-    //////////////////////////
     payload["meta"]["timestamp"] = processUtils::generate_timestamp(this->_tz);
-    //////////////////////////
-    LOG(WARNING) << "[probe_callback] create meta payload [generate_timestamp]";
-    //////////////////////////
     payload["meta"]["model"] = this->_configs.model;
     payload["meta"]["detection_type"] = this->_configs.model_type;
     payload["meta"]["uuid"] = processUtils::generate_uuid();
     payload["meta"]["resolution"]["height"] = height;
     payload["meta"]["resolution"]["width"] = width;
 
-    //////////////////////////
-    LOG(WARNING) << "[probe_callback] createDDD meta payload";
-    //////////////////////////
-
     // loop through detected objects
     int objects_detected = 0;
     for (object_list = frame_meta->obj_meta_list; object_list != NULL; object_list = object_list->next)
     {
-      //////////////////////////
-      LOG(WARNING) << "[probe_callback] create inference payload [unpack]";
-      //////////////////////////
       // cast data and add inference objects to payload
       NvDsObjectMeta *obj_meta = (NvDsObjectMeta *)(object_list->data);
       NvDsComp_BboxInfo tracker_bbox_info = obj_meta->tracker_bbox_info;
@@ -235,31 +204,22 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
        *
        *  (0,1)                (1,1)
        */
-      //////////////////////////
-      LOG(WARNING) << "[probe_callback] create inference [bbox]";
-      //////////////////////////
+
       float xmax = tracker_boxes.left + tracker_boxes.width;
       float xmin = tracker_boxes.left;
       float ymax = tracker_boxes.top + tracker_boxes.height;
       float ymin = tracker_boxes.top;
       float confidence = obj_meta->confidence * 100;
-      //////////////////////////
-      LOG(WARNING) << "[probe_callback] create inference [payload]";
-      //////////////////////////
+
       payload["inference"][objects_detected]["bbox"] = {{"x_max", (int)xmax}, {"x_min", (int)xmin}, {"y_max", (int)ymax}, {"y_min", (int)ymin}};
       payload["inference"][objects_detected]["confidence"] = (int) confidence;
       payload["inference"][objects_detected]["label"] = (std::string) obj_meta->obj_label;
       payload["inference"][objects_detected]["tracking_id"] = (int) obj_meta->object_id;
       payload["inference"][objects_detected]["camera_id"] = (int) frame_meta->source_id;
       objects_detected += 1;
-      //////////////////////////
-      LOG(WARNING) << "[probe_callback] create inference [finisheddd]";
-      //////////////////////////
+
     } // parse next detection for this streamId
 
-    //////////////////////////
-    LOG(WARNING) << "[probe_callback] create payload for this streamID";
-    //////////////////////////
     // if this source has inference detections, act on it
     if (payload.contains("inference"))
     {
@@ -284,7 +244,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
       {
         this->_display_lock.lock();
         try {
-          LOG(INFO) << "[probe_callback] " << payload.dump(4);
+          VLOG(DEEP) << "[probe_callback] payload" << payload.dump(4);
           this->_display_queue[(int)frame_meta->source_id]->push(payload);
         } catch (const std::exception &e) {
           LOG(ERROR) << "Error adding to queue: " << e.what();
