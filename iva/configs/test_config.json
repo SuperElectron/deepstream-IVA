@@ -1,0 +1,45 @@
+{
+  "messaging": {
+    "config_ref": "https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md",
+    "error_codes": "https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-ErrorCodes",
+    "overlay_ip": "192.168.75.41",
+    "producer": {
+      "topic": "overlay-bbox",
+      "bootstrap": [
+        { "bootstrap.servers": "192.168.1.73:9092" }
+      ]
+    },
+    "consumer": {
+      "topic": "spyder-distance",
+      "bootstrap": [
+        { "bootstrap.servers": "192.168.1.73:9092" },
+        { "auto.offset.reset": "latest" },
+        { "enable.auto.offset.store": "true" },
+        { "session.timeout.ms": "15000" },
+        { "enable.partition.eof": "true" },
+        { "max.poll.interval.ms": "10800000" },
+        { "debug": "consumer" },
+        { "queued.max.messages.kbytes": "5000" },
+        { "coordinator.query.interval.ms": "5000" },
+        { "heartbeat.interval.ms": "3000"
+        }
+      ]
+    }
+  },
+  "pipeline": {
+    "config_file": "/src/configs/pipeline/test/config_test.yml",
+    "processing": {
+      "topic": "overlay-bbox",
+      "device_id": "overlay-bbox",
+      "paired_device_id": "spyder-1001",
+      "model": "facenet",
+      "model_type": "face-detection",
+      "publish": false,
+      "save": false,
+      "bbox_line_thickness": 4,
+      "minimum_iou_score": 60,
+      "min_confidence_to_display": 40,
+      "font_size": 2
+    }
+  }
+}

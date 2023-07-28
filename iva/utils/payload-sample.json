@@ -1,0 +1,43 @@
+{
+  "inference": [
+    {
+      "bbox": {
+        "x_max": 1078,
+        "x_min": 787,
+        "y_max": 637,
+        "y_min": 278
+      },
+      "camera_id": 0,
+      "confidence": 99,
+      "label": "face",
+      "tracking_id": 0
+    },
+    {
+      "bbox": {
+        "x_max": 700,
+        "x_min": 400,
+        "y_max": 637,
+        "y_min": 278
+      },
+      "camera_id": 0,
+      "confidence": 80,
+      "label": "face",
+      "tracking_id": 1
+    }
+  ],
+  "meta": {
+    "detection_type": "face-detection",
+    "device_id": "overlay-bbox",
+    "frame": 5,
+    "model": "facenet",
+    "resolution": {
+      "height": 1080,
+      "width": 1920
+    },
+    "spyder_id": "module-1001",
+    "timestamp": "2023-05-19T15:27:11.327:EDT",
+    "utc": 1684524431327,
+    "uuid": "0b74e332-d5cb-4d53-a24c-a89e8a095b8a"
+  },
+  "topic": "my-topic"
+}

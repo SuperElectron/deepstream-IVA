@@ -1,0 +1,68 @@
+
+/**
+ * @brief writes bounding boxes onto the video frame by parsing through contents populated in NvDsMeta
+ * @note
+ *  NvDsMeta is nvidia's detection+tracking Gstreamer buffer metadata structure.  This effectively stores results of detection+tracking elements
+ *  Reference: http://docs.nvidia.com/metropolis/deepstream/dev-guide/
+ *  Reference: https://docs.nvidia.com/metropolis/deepstream/sdk-api/struct__NvDsFrameMeta.html
+ *
+ * @param frame_meta            @description the detection information (NvDsMeta) that matches to the image frame
+ * @param frame                 @description the extracted video frame that matches to the metadata
+ */
+void core::Processing::update_overlay(NvDsFrameMeta *frame_meta, cv::Mat &frame)
+{
+    NvDsMetaList *object_list = NULL;
+    auto camera_id = frame_meta->source_id;
+
+    for (object_list = frame_meta->obj_meta_list; object_list != NULL; object_list = object_list->next)
+    {
+        // cast data and unpack fields used to write bbox to frame
+        NvDsObjectMeta *obj_meta = (NvDsObjectMeta * )(object_list->data);
+        NvDsComp_BboxInfo tracker_bbox_info = obj_meta->tracker_bbox_info;
+        NvBbox_Coords tracker_boxes = tracker_bbox_info.org_bbox_coords;
+        float bbox_xmax = tracker_boxes.left + tracker_boxes.width;
+        float bbox_xmin = tracker_boxes.left;
+        float bbox_ymax = tracker_boxes.top + tracker_boxes.height;
+        float bbox_ymin = tracker_boxes.top;
+
+        std::string label = (std::string) obj_meta->obj_label;
+        guint64 tracking_id = obj_meta->object_id;
+        gfloat confidence = obj_meta->confidence;
+
+        // set parameters to write bbox onto screen
+        int thickness = 2;
+
+        // Drawing the Rectangle
+        cv::Scalar bbox_line_color = cv::Scalar(0, 0, 255);  // RGB
+        cv::rectangle(
+                frame,
+                cv::Point(bbox_xmax, bbox_ymax),
+                cv::Point(bbox_xmin, bbox_ymin),
+                bbox_line_color,
+                thickness,
+                cv::LINE_8
+        );
+        cv::Point text_position(bbox_xmin, bbox_ymin);
+
+        // Placing label above bounding box
+        int font_size = 1;
+        cv::Scalar font_color = cv::Scalar(0, 0, 255);  // RGB
+        int font_weight = 2;
+        std::string distance = std::to_string(0.5);
+        std::string bbox_label = distance + " M"
+                "[ " + std::to_string(tracking_id) + " ]"
+                + label +
+                "[ " + std::to_string(confidence) + "% ]";
+
+        cv::putText(
+                frame,
+                bbox_label.c_str(),
+                text_position,
+                cv::FONT_HERSHEY_COMPLEX,
+                font_size,
+                font_color,
+                font_weight,
+                cv::LINE_AA
+        );
+    }
+};
