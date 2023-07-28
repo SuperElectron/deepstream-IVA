@@ -240,7 +240,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
       {
         this->_display_lock.lock();
         try {
-          // LOG(INFO) << "[probe_callback] " << payload.dump(4);
+          LOG(INFO) << "[probe_callback] " << payload.dump(4);
           this->_display_queue[(int)frame_meta->source_id]->push(payload);
         } catch (const std::exception &e) {
           LOG(ERROR) << "Error adding to queue: " << e.what();
