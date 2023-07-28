@@ -24,9 +24,14 @@ int main(int argc, char *argv[])
   if(!success)
     return EXIT_FAILURE;
 
+#ifdef GOOGLE_LOG_LEVEL
+  FLAGS_minloglevel = GOOGLE_LOG_LEVEL;
+#else
+  FLAGS_minloglevel = 1; // Default log level
+#endif
 
   /* Set up logging. Note that GOOGLE_LOG_LEVEL is set in CMakeLists.txt */
-  std::cout << "FLAGS_minloglevel=" << GOOGLE_LOG_LEVEL << std::endl;
+  std::cout << "FLAGS_minloglevel=" << FLAGS_minloglevel << std::endl;
   FLAGS_minloglevel = GOOGLE_LOG_LEVEL;
   core::Logging::init(argv);
   google::InstallFailureSignalHandler();
