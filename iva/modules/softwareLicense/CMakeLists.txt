@@ -21,6 +21,7 @@ target_sources(${PROJECT_NAME}_LIB PUBLIC ${HEADERS} ${SRC} )
 
 # set location to where library folder is located
 
+file(WRITE /usr/local/libLexActivator.so "")
 if( ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64" )
     file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/libraries/x86_64/libLexActivator.so" DESTINATION /usr/local/lib)
 else(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64" )
