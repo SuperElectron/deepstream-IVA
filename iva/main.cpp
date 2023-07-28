@@ -12,8 +12,8 @@ int main(int argc, char *argv[])
 {
 
   if (argc < 2) {
-    std::cerr << "Usage    | $ " << argv[0] << " /path/to/configs\n";
-    std::cerr << "Try this | $ " << argv[0] << " .cache/configs/config.json\n";
+    std::cerr << "Usage    | $ " << argv[0] << " /path/to/.cache\n";
+    std::cerr << "Try this | $ " << argv[0] << " /tmp/.cache\n";
     return 1;
   }
 

@@ -20,6 +20,9 @@
 #include "callbacks.hpp"
 #include "pipelineUtils.hpp"
 
+// Declare the global variable from argv[1] in main.cpp
+extern std::string BASE_DIR;
+
 using namespace pipelineUtils;
 
 namespace core {

@@ -229,7 +229,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
       // save detection data to json (for debugging)
       if (this->_configs.save) {
         std::stringstream ss;
-        ss << "/tmp/.cache/payload/frame_" << std::setw(4) << std::setfill('0') << payload["meta"]["frame"] << ".json";
+        ss << BASE_DIR << "/payload/frame_" << std::setw(4) << std::setfill('0') << payload["meta"]["frame"] << ".json";
         std::string file_name = ss.str();
         std::ofstream o(file_name.c_str());
         o << std::setw(4) << payload << std::endl;
