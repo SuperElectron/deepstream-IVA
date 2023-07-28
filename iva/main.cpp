@@ -26,10 +26,16 @@ int main(int argc, char *argv[])
 
 
   /* Set up logging. Note that GOOGLE_LOG_LEVEL is set in CMakeLists.txt */
+  std::cout << "FLAGS_minloglevel=" << GOOGLE_LOG_LEVEL << std::endl;
   FLAGS_minloglevel = GOOGLE_LOG_LEVEL;
   core::Logging::init(argv);
   google::InstallFailureSignalHandler();
 
+  LOG(ERROR) << "ERROR logs enabled";
+  LOG(WARNING) << "WARNING logs enabled";
+  LOG(INFO) << "INFO logs enabled";
+  VLOG(DEBUG) << "DEBUG logs enabled";
+  VLOG(DEEP) << "DEEP logs enabled";
   // start the app
   core::Application app;
   app.start();

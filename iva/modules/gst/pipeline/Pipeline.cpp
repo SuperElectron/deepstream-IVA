@@ -197,6 +197,10 @@ bool Pipeline::set_configs(njson conf)
         ret = false;
         LOG(WARNING) << "mp4 file must end with .mp4: sources[" << i << "]=" << this->_configs.sources[i];
       }
+      this->_configs.sources[i] = BASE_DIR + (std::string) "/" + (std::string) this->_configs.sources[i];
+      std::ifstream f(this->_configs.sources[i]);
+      if(!f.good())
+        LOG(FATAL) << "Could not find src: " << this->_configs.sources[i] << ". Check your path";
     }
     else if(this->_configs.src_type == "rtsp") {
       // check that it starts with rtsp://
