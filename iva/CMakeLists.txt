@@ -65,17 +65,6 @@ option(YAML_CONFIGS "Include YAML configs in Pipeline module" OFF)
 # cmake .. -D ENABLE_DOT=ON
 option(ENABLE_DOT "Create image from .dot when pipeline changes state" OFF)
 
-# cmake .. -D GOOGLE_LOG_LEVEL=2 (0=INFO, 1=WARNING, 2=ERROR, 3=FATAL)
-if(DEFINED GOOGLE_LOG_LEVEL)
-    add_compile_definitions(MY_LOG_LEVEL=${GOOGLE_LOG_LEVEL})
-    add_definitions(-DMY_LOG_LEVEL=${GOOGLE_LOG_LEVEL})
-else()
-    set(MY_LOG_LEVEL 1)
-    add_compile_definitions(MY_LOG_LEVEL=1)
-    add_definitions(-DMY_LOG_LEVEL=1)
-endif()
-message(STATUS "Set GLog level to ${MY_LOG_LEVEL}")
-
 if(YAML_CONFIGS)
     add_compile_definitions(YAML_CONFIGS=TRUE)
     set(YAML_CONFIGS "TRUE")
@@ -100,6 +89,18 @@ set_target_properties(${PROJECT_NAME}_LIB PROPERTIES LINKER_LANGUAGE CXX)
 
 set(SRC_FILE main.cpp)
 add_executable(${PROJECT_NAME} ${SRC_FILE})
+
+
+# cmake .. -D GOOGLE_LOG_LEVEL=2 (0=INFO, 1=WARNING, 2=ERROR, 3=FATAL)
+# Check if the log level is specified as a CMake variable
+if (DEFINED GOOGLE_LOG_LEVEL)
+    message(STATUS "Setting log level to: ${GOOGLE_LOG_LEVEL}")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE LOG_LEVEL=${GOOGLE_LOG_LEVEL})
+else()
+    message(STATUS "Setting log level to default: 1")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE LOG_LEVEL=1)
+endif()
+
 
 ################################################
 # Test configuration
