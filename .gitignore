@@ -89,3 +89,4 @@ iva/logs
 **/*prototxt
 **/*.etlt
 **/*.onnx
+**/*calibration*.txt
