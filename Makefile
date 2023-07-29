@@ -3,7 +3,7 @@
 #################################################
 ## set bash session environment variables
 PROJECT_DIR?=$(shell pwd)
-DOCKER_DIR:=$(PROJECT_DIR)/.config/build
+DOCKER_DIR:=$(PROJECT_DIR)/.build/build
 include .env
 
 # kafka topic environment variable
