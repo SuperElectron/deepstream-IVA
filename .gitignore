@@ -84,7 +84,7 @@ iva/configs/model
 iva/logs
 
 # Engine files
-**/caffemodel*
+**/*caffemodel*
 **/*.engine
 **/*prototxt
 **/*.etlt
