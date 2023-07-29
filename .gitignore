@@ -82,3 +82,4 @@ iva/sample_videos
 iva/utils/nvdsinfer_customparser
 iva/configs/model
 iva/logs
+.iva/model
