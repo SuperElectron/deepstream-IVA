@@ -1,1 +1,0 @@
-nc -z $KAFKA_IP 9092

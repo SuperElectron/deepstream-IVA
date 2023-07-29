@@ -3,15 +3,17 @@
 #################################################
 ## set bash session environment variables
 PROJECT_DIR?=$(shell pwd)
-DOCKER_DIR:=$(PROJECT_DIR)/.docker
+DOCKER_DIR:=$(PROJECT_DIR)/.config/build
 include .env
 
 # kafka topic environment variable
 TOPIC?=test
 ifeq ($(shell uname -m),x86_64)
+ 	ARCH=x86_64
  	ARCHITECTURE=amd
  	PROD_TAG=amd
  else
+ 	ARCH=aarch64
  	ARCHITECTURE=arm
  	DOCKER_BASE=-l4t
  	PROD_TAG=arm64
@@ -60,7 +62,7 @@ network:
 build: build_kafka build_iva network
 
 build_iva:
-	docker buildx build --build-arg DOCKER_BASE=$(DOCKER_BASE) -t $(IVA_BASE_IMG)-base $(DOCKER_DIR)/$(IVA_MODULE)
+	docker buildx build --build-arg ARCH=$(ARCH) -t $(IVA_BASE_IMG)-base $(DOCKER_DIR)/$(IVA_MODULE)
 build_iva_prod:
 	docker buildx build \
 		--build-arg IVA_BASE_IMG=$(IVA_BASE_IMG)-base \
@@ -100,7 +102,7 @@ start_iva:
         -v ~/.Xauthority:/root/.Xauthority \
 	    -v "/dev:/dev" \
 	    -v $(PROJECT_DIR)/$(IVA_MODULE):/src \
-	    -v $(PROJECT_DIR)/.cache:/tmp/.cache \
+	    -v $(PROJECT_DIR)/.iva:/root/.iva \
 	    -w /src \
 		$(IVA_BASE_IMG)-base
 

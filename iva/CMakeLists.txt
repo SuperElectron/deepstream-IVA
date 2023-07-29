@@ -1,21 +1,27 @@
 ################################################
-### BUILD instructions (generate binary in /src/build)
+### BUILD instructions (generate binary in ~/build)
 ## cmake [options]
 # -D BUILD_TESTS=ON/OFF
 # -D SECURITY_FOLDER=/path/to/security/configs
-#
 # cmake -B [directory] -S [location of CMakeLists.txt] [options]
+#
+## run instructions
+## (1) create a build directory
 # mkdir -p && cd build
+#
+## (2) build
 # cmake ..
+#
 # make -j -l5
-### RUN instructions (run binary file `gstreamer` in /src/build)
+## (3) run
 # ./gstreamer
+#
+
 ################################################
 # Main CMake settings for the project
 ################################################
 cmake_minimum_required(VERSION 3.15.2)
 enable_language(C CXX)
-
 
 # Set build type (Release, Debug, RelWithDebInfo, MinSizeRel)
 #  https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html
@@ -52,10 +58,10 @@ else(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64" )
     ADD_DEFINITIONS(-DPLATFORM_TEGRA=TRUE)
 endif()
 
-set(GTest_DIR /start/vcpkg/installed/${BUILD_ARCHITECTURE}-linux/share/gtest)
+set(GTest_DIR ~/vcpkg/installed/${BUILD_ARCHITECTURE}-linux/share/gtest)
 
-set("CMAKE_TOOLCHAIN_FILE /start/vcpkg/scripts/buildsystems/vcpkg.cmake")
-include(/start/vcpkg/scripts/buildsystems/vcpkg.cmake)
+set("CMAKE_TOOLCHAIN_FILE ~/vcpkg/scripts/buildsystems/vcpkg.cmake")
+include(~/vcpkg/scripts/buildsystems/vcpkg.cmake)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_MODULES_DIR}")
 
 # cmake .. -D BUILD_TESTS=ON

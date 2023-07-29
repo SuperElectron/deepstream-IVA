@@ -232,6 +232,7 @@ bool Pipeline::set_configs(njson conf)
         ret = false;
         LOG(WARNING) << "Is not an mp4 file: sinks[" << i << "]=" << this->_configs.sinks[i];
       }
+      this->_configs.sinks[i] = (std::string) BASE_DIR + (std::string) "/outputs/video/" + this->_configs.sinks[i].get<std::string>();
     }
     else if(this->_configs.sink_type == "rtmp") {
       // check that it starts with rtsp://
