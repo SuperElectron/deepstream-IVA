@@ -73,8 +73,8 @@ dist
 **/data
 **/CMakeFiles
 **/cmake-build-debug
-**/build*
 **/bin
+**/build
 
 # Project specifics
 docs/html
@@ -82,3 +82,11 @@ iva/sample_videos
 iva/utils/nvdsinfer_customparser
 iva/configs/model
 iva/logs
+
+# Engine files
+**/*caffemodel*
+**/*.engine
+**/*prototxt
+**/*.etlt
+**/*.onnx
+**/*calibration*.txt

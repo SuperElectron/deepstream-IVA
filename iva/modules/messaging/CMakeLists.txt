@@ -4,13 +4,13 @@ set(MODULE_NAME "messaging-kafka")
 message(STATUS "*** building ${MODULE_NAME} module ***")
 
 # include librdkafka installation
-include(../../cmake/kafka.cmake)
+include(${CMAKE_MODULES_DIR}/kafka.cmake)
 
 
 ##################################################
 ## Include header files for 'modern-cpp-kafka'
 
-set(KAFKA_CPP_DIR "/start/modern-cpp-kafka/include")
+set(KAFKA_CPP_DIR "~/modern-cpp-kafka/include")
 file(GLOB SRC_HEADERS ${KAFKA_CPP_DIR}/kafka/*.h ${KAFKA_CPP_DIR}/kafka/*.hpp)
 target_include_directories(${PROJECT_NAME}_LIB PUBLIC ${KAFKA_CPP_DIR})
 target_sources(${PROJECT_NAME}_LIB PUBLIC ${SRC_HEADERS})

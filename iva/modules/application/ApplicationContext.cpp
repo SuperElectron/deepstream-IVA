@@ -18,9 +18,10 @@ ApplicationContext::ApplicationContext()
 bool ApplicationContext::_load_module_configs()
 {
 	/* load in module configurations */
-	std::ifstream f("/tmp/.cache/configs/config.json");
+    std::string conf_dir = (std::string) BASE_DIR + (std::string) "/configs/config.json";
+	std::ifstream f(conf_dir.c_str());
     if(!f.good())
-      LOG(FATAL) << "Could not find /tmp/.cache/configs/config.json.  Ensure that you have mounted the configs directory to your project!";
+      LOG(FATAL) << "Could not find " << conf_dir << ". Ensure that the USER_DIRECTORY exists at " << BASE_DIR;
 
 	njson conf = njson::parse(f);
 	if (conf.empty())

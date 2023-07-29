@@ -7,9 +7,12 @@
 #include <string>
 #include <unordered_set>
 
-#include "Application.h"
+//#include "Application.h"
 #include "date/tz.h"
 #include "logging.hpp"
+
+// Declare the global variable from argv[1] in main.cpp
+extern std::string BASE_DIR;
 
 namespace fs = std::filesystem;
 using njson = nlohmann::json;
@@ -410,9 +413,8 @@ inline GstElement* createRtspSrcBin(std::string binName, std::string rtsp_url)
 
 inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_src, int width, int height, bool live_source)
 {
-  std::string detection_file = "/tmp/.cache/configs/model/detection.yml";
-  std::string tracker_file = "/tmp/.cache/configs/model/tracker.yml";
-
+  std::string detection_file = BASE_DIR + "/model/detection.yml";
+  std::string tracker_file = BASE_DIR + "/model/tracker.yml";
 
   // create bin
   GstElement* bin = gst_bin_new(binName.c_str());

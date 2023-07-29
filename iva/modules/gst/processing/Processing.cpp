@@ -84,6 +84,8 @@ bool Processing::set_configs(njson conf)
     return false;
   }
 
+  // read timezone from /etc/timezone
+  this->_tz = processUtils::read_timezone_from_system();
   return true;
 }
 
@@ -168,7 +170,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
     payload["meta"]["device_id"] = this->_configs.device_id;
     payload["meta"]["frame"] = frame_meta->frame_num;
     payload["meta"]["utc"] = processUtils::generate_ts_epoch();
-    payload["meta"]["timestamp"] = processUtils::generate_timestamp();
+    payload["meta"]["timestamp"] = processUtils::generate_timestamp(this->_tz);
     payload["meta"]["model"] = this->_configs.model;
     payload["meta"]["detection_type"] = this->_configs.model_type;
     payload["meta"]["uuid"] = processUtils::generate_uuid();
@@ -202,6 +204,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
        *
        *  (0,1)                (1,1)
        */
+
       float xmax = tracker_boxes.left + tracker_boxes.width;
       float xmin = tracker_boxes.left;
       float ymax = tracker_boxes.top + tracker_boxes.height;
@@ -214,6 +217,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
       payload["inference"][objects_detected]["tracking_id"] = (int) obj_meta->object_id;
       payload["inference"][objects_detected]["camera_id"] = (int) frame_meta->source_id;
       objects_detected += 1;
+
     } // parse next detection for this streamId
 
     // if this source has inference detections, act on it
@@ -229,7 +233,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
       // save detection data to json (for debugging)
       if (this->_configs.save) {
         std::stringstream ss;
-        ss << "/tmp/.cache/payload/frame_" << std::setw(4) << std::setfill('0') << payload["meta"]["frame"] << ".json";
+        ss << BASE_DIR << "/payload/frame_" << std::setw(4) << std::setfill('0') << payload["meta"]["frame"] << ".json";
         std::string file_name = ss.str();
         std::ofstream o(file_name.c_str());
         o << std::setw(4) << payload << std::endl;
@@ -240,7 +244,7 @@ bool core::Processing::probe_callback(GstPad *pad, GstPadProbeInfo *info)
       {
         this->_display_lock.lock();
         try {
-          // LOG(INFO) << "[probe_callback] " << payload.dump(4);
+          VLOG(DEEP) << "[probe_callback] payload" << payload.dump(4);
           this->_display_queue[(int)frame_meta->source_id]->push(payload);
         } catch (const std::exception &e) {
           LOG(ERROR) << "Error adding to queue: " << e.what();

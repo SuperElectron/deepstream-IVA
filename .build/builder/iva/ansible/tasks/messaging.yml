@@ -1,0 +1,45 @@
+---
+- name: [messaging.yml] Set variables for 'modern-cpp-kafka' install
+  set_fact:
+    KAFKA_VERSION_TAG: "2022.08.01"
+    REPO_NAME: "modern-cpp-kafka"
+    vcpkg_dir: "/home/{{ ansible_user }}/vcpkg"
+
+- name: [messaging.yml] Clone 'modern-cpp-kafka' repo
+  block:
+    - name: Change directory to the workspace
+      shell: cd "{{ HOME_DIR }}"
+      register: cd_workspace
+
+    - name: [messaging.yml] Download the 'modern-cpp-kafka' archive
+      shell: |
+        curl -OL "https://github.com/morganstanley/{{ REPO_NAME }}/archive/refs/tags/v{{ KAFKA_VERSION_TAG }}.zip"
+      become_user: "{{ ansible_user }}"
+      when: cd_workspace is succeeded
+
+    - name: [messaging.yml] Extract the archive
+      unarchive:
+        src: "v{{ KAFKA_VERSION_TAG }}.zip"
+        dest: "{{ HOME_DIR }}"
+        remote_src: yes
+      become_user: "{{ ansible_user }}"
+      when: cd_workspace is succeeded
+
+    - name: [messaging.yml] Remove the archive
+      file:
+        path: "v{{ KAFKA_VERSION_TAG }}.zip"
+        state: absent
+      become_user: "{{ ansible_user }}"
+      when: cd_workspace is succeeded
+
+    - name: [messaging.yml] Rename the extracted directory
+      shell: mv "{{ REPO_NAME }}-{{ KAFKA_VERSION_TAG }}" "{{ REPO_NAME }}"
+      become_user: "{{ ansible_user }}"
+      when: cd_workspace is succeeded
+
+- name: [messaging.yml] VCPKG install [librdkafka]
+  command: "{{ vcpkg_dir }}/vcpkg install librdkafka"
+  become_user: "{{ ansible_user }}"
+  environment:
+    ANSIBLE_DEBUG: "1"
+    VCPKG_FORCE_SYSTEM_BINARIES: "1"

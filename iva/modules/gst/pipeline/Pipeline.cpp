@@ -133,18 +133,18 @@ bool Pipeline::set_configs(njson conf)
   this->_yaml_configs = conf["yaml_configs"].get<std::string>();
   std::ifstream f(this->_configs.configs);
   if(!f.good())
-    LOG(FATAL) << "Could not find element `pipeline['configs']` in /tmp/.cache/configs/config.json. Check your path";
+    LOG(FATAL) << "Could not find element `pipeline['configs']` in " << BASE_DIR << "/configs/config.json. Check your path";
 #endif
 
   // check that mounted directory has detection.yml and tracker.yml
-  std::string detection_file = "/tmp/.cache/configs/model/detection.yml";
-  std::string tracker_file = "/tmp/.cache/configs/model/tracker.yml";
+  std::string detection_file = BASE_DIR + "/model/detection.yml";
+  std::string tracker_file = BASE_DIR + "/model/tracker.yml";
   std::ifstream detection_f(detection_file);
   std::ifstream tracker_f(tracker_file);
   if(!detection_f.good())
-    LOG(FATAL) << "Could not find /tmp/.cache/configs/model/detection.yml. Ensure that .cache/configs/model has detection.yml before running the container!";
+    LOG(FATAL) << "Could not find " << detection_file << ". Ensure that .cache/model has detection.yml";
   if(!tracker_f.good())
-    LOG(FATAL) << "Could not find /tmp/.cache/configs/model/tracker.yml. Ensure that .cache/configs/model has tracker.yml before running the container!";
+    LOG(FATAL) << "Could not find " << tracker_file << ". Ensure that .cache/model has tracker.yml";
 
   /* SANITIZE INPUTS */
   bool ret = true;
@@ -197,6 +197,10 @@ bool Pipeline::set_configs(njson conf)
         ret = false;
         LOG(WARNING) << "mp4 file must end with .mp4: sources[" << i << "]=" << this->_configs.sources[i];
       }
+      this->_configs.sources[i] = BASE_DIR + (std::string) "/" + (std::string) this->_configs.sources[i];
+      std::ifstream f(this->_configs.sources[i]);
+      if(!f.good())
+        LOG(FATAL) << "Could not find src: " << this->_configs.sources[i] << ". Check your path";
     }
     else if(this->_configs.src_type == "rtsp") {
       // check that it starts with rtsp://
@@ -228,6 +232,7 @@ bool Pipeline::set_configs(njson conf)
         ret = false;
         LOG(WARNING) << "Is not an mp4 file: sinks[" << i << "]=" << this->_configs.sinks[i];
       }
+      this->_configs.sinks[i] = (std::string) BASE_DIR + (std::string) "/outputs/video/" + this->_configs.sinks[i].get<std::string>();
     }
     else if(this->_configs.sink_type == "rtmp") {
       // check that it starts with rtsp://

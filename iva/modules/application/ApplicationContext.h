@@ -14,6 +14,9 @@
 
 using njson = nlohmann::json;
 
+// Declare the global variable from argv[1] in main.cpp
+extern std::string BASE_DIR;
+
 namespace core
 {
 

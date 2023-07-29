@@ -50,13 +50,9 @@ public:
         auto logs_dir_warning = logs_dir + "/warning_logs/";
         auto logs_dir_error = logs_dir + "/error_logs/";
         auto logs_dir_fatal = logs_dir + "/fatal_logs/";
-
 #ifdef ENABLE_DOT
         auto gst_dot = logs_dir + "/gst_debug_dot/";
 #endif
-        auto media_dir = current_path + (std::string) "/saved_media";
-        auto images = media_dir + "/image/";
-        auto payloads = media_dir + "/payload/";
 
         if (!fs::exists(logs_dir)) {
           // general directory where everything goes
@@ -89,10 +85,20 @@ public:
         }
 #endif
 
+        /* set up outputs directory */
+        auto media_dir = BASE_DIR + (std::string) "/outputs";
+        auto images = media_dir + "/image/";
+        auto payloads = media_dir + "/payload/";
+        auto videos = media_dir + "/video/";
+
         if (!fs::exists(media_dir)) {
             // store generated outputs (json, video, images)
             fs::create_directory(media_dir);
             fs::permissions(media_dir, fs::perms::all);
+        }
+        if (!fs::exists(videos)) {
+            fs::create_directory(videos);
+            fs::permissions(videos, fs::perms::all);
         }
         if (!fs::exists(images)) {
             fs::create_directory(images);

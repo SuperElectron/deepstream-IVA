@@ -19,14 +19,15 @@ target_include_directories(${PROJECT_NAME}_LIB PUBLIC ${CMAKE_CURRENT_SOURCE_DIR
 # create the library
 target_sources(${PROJECT_NAME}_LIB PUBLIC ${HEADERS} ${SRC} )
 
-# set location to where library folder is located
-
-if( ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64" )
-    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/libraries/x86_64/libLexActivator.so" DESTINATION /usr/local/lib)
-else(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64" )
-    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/libraries/aarch64/libLexActivator.so" DESTINATION /usr/local/lib)
-endif()
+# set location to where library folder is located (put there in Docker or ansible)
 set(LIBRARY_FOLDER "/usr/local/lib" )
+if( ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64" )
+    file(COPY "./libraries/x86_64/libLexActivator.so" DESTINATION ${LIBRARY_FOLDER})
+else(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64" )
+    file(COPY "./libraries/aarch64/libLexActivator.so" DESTINATION ${LIBRARY_FOLDER})
+endif()
+
+message(STATUS "LIBRARY_FOLDER for libLexActivator.so: ${LIBRARY_FOLDER}")
 
 # Set linker flags for dynamic linking
 set(LDFLAGS "-Wl,-rpath,${LIBRARY_FOLDER};-L ${LIBRARY_FOLDER};-lLexActivator")

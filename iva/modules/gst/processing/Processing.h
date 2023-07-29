@@ -32,6 +32,8 @@
 
 using njson = nlohmann::json;
 
+// Declare the global variable from argv[1] in main.cpp
+extern std::string BASE_DIR;
 
 namespace core
 {
@@ -149,6 +151,7 @@ public:
 private:
     // core::Modules::<module-id>=core::Modules::MODULE_PROCESSING
     int _module_id;
+    std::string _tz;
 
     /// write detection data onto screen
     void _write_detections_to_image(cv::Mat frame, njson detection);

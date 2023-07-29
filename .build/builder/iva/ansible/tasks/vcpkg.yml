@@ -1,0 +1,63 @@
+---
+- name: [vcpkg.yml] Set variables for 'modern-cpp-kafka' repo
+  set_fact:
+    vcpkg_dir: "/home/{{ ansible_user }}/vcpkg"
+
+- name: [vcpkg.yml] Clone VCPKG repo
+  git:
+    repo: https://github.com/Microsoft/vcpkg.git
+    dest: "{{ vcpkg_dir }}"
+  become_user: "{{ ansible_user }}"
+  environment:
+    ANSIBLE_DEBUG: "1"
+
+- name: [vcpkg.yml] Set VCPKG_FORCE_SYSTEM_BINARIES=1 in ~/.bashrc
+  lineinfile:
+    path: ~/.bashrc
+    line: 'export VCPKG_FORCE_SYSTEM_BINARIES=1'
+    state: present
+    create: yes
+  notify: Reload Bashrc
+
+- name: [vcpkg.yml] VCPKG bootstrap setup
+  command: "{{ vcpkg_dir }}/bootstrap-vcpkg.sh"
+  become_user: "{{ ansible_user }}"
+  environment:
+    ANSIBLE_DEBUG: "1"
+    VCPKG_FORCE_SYSTEM_BINARIES: "1"
+- name: [vcpkg.yml] VCPKG integrate install
+  command: "{{ vcpkg_dir }}/vcpkg integrate install"
+  become_user: "{{ ansible_user }}"
+  environment:
+    ANSIBLE_DEBUG: "1"
+    VCPKG_FORCE_SYSTEM_BINARIES: "1"
+
+- name: [vcpkg.yml] VCPKG install [gtest]
+  command: "{{ vcpkg_dir }}/vcpkg install gtest"
+  become_user: "{{ ansible_user }}"
+  environment:
+    ANSIBLE_DEBUG: "1"
+    VCPKG_FORCE_SYSTEM_BINARIES: "1"
+- name: [vcpkg.yml] VCPKG install [bshoshany-thread-pool]
+  command: "{{ vcpkg_dir }}/vcpkg install bshoshany-thread-pool"
+  become_user: "{{ ansible_user }}"
+  environment:
+    ANSIBLE_DEBUG: "1"
+    VCPKG_FORCE_SYSTEM_BINARIES: "1"
+- name: [vcpkg.yml] VCPKG install [glog]
+  command: "{{ vcpkg_dir }}/vcpkg install glog"
+  become_user: "{{ ansible_user }}"
+  environment:
+    ANSIBLE_DEBUG: "1"
+    VCPKG_FORCE_SYSTEM_BINARIES: "1"
+- name: [vcpkg.yml] VCPKG install [date]
+  command: "{{ vcpkg_dir }}/vcpkg install date"
+  become_user: "{{ ansible_user }}"
+  environment:
+    ANSIBLE_DEBUG: "1"
+    VCPKG_FORCE_SYSTEM_BINARIES: "1"
+- name: [vcpkg.yml] VCPKG install [librdkafka]
+  command: "{{ vcpkg_dir }}/vcpkg install librdkafka"
+  environment:
+    ANSIBLE_DEBUG: "1"
+    VCPKG_FORCE_SYSTEM_BINARIES: "1"
