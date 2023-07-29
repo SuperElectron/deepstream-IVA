@@ -1,0 +1,26 @@
+---
+
+- name: [yolo.yml] Set CUDA_VER variable
+  set_fact:
+    CUDA_VER: "{{ '11.4' if machine_architecture.stdout == 'aarch64' else '11.6' }}"
+
+- name: [yolo.yml] Download the DeepStream-Yolo repository
+  shell: "cd {{ HOME_DIR }} && wget https://github.com/marcoslucianops/DeepStream-Yolo/archive/refs/heads/master.zip -O {{ HOME_DIR }}/DeepStream-Yolo.zip"
+  register: download_result
+
+- name: [yolo.yml] Unzip the repository and build shared object library
+  shell: |
+    cd {{ HOME_DIR }}
+    unzip DeepStream-Yolo.zip
+    rm -rf DeepStream-Yolo.zip
+    mv {{ HOME_DIR }}/DeepStream-Yolo-master {{ HOME_DIR }}/DeepStream-Yolo
+    cd {{ HOME_DIR }}/DeepStream-Yolo && CUDA_VER={{ CUDA_VER }} make -C nvdsinfer_custom_impl_Yolo
+    mv {{ HOME_DIR }}/DeepStream-Yolo/nvdsinfer_custom_impl_Yolo/libnvdsinfer_custom_impl_Yolo.so /usr/local/lib/libnvdsinfer_custom_impl_Yolo.so
+    chmod 777 /usr/local/lib/libnvdsinfer_custom_impl_Yolo.so
+  when: download_result is succeeded
+
+- name: [yolo.yml] Remove the repository
+  file:
+    path: "{{ HOME_DIR }}/DeepStream-Yolo"
+    state: absent
+  when: download_result is succeeded

@@ -1,0 +1,25 @@
+---
+- name: [cmake.yml] Set variables for cmake install
+  set_fact:
+    VERSION: "3.25.1"
+
+- name: [cmake.yml] Uninstall existing CMake
+  apt:
+    name: cmake
+    state: absent
+    autoremove: yes
+    purge: yes
+
+- name: [cmake.yml] Remove CMake from /root/.local/bin
+  file:
+    path: /root/.local/bin/cmake
+    state: absent
+  ignore_errors: yes
+
+- name: [cmake.yml] Set variables
+  shell: |
+    cd /tmp
+    wget -qO- "https://github.com/Kitware/CMake/releases/download/v{{ VERSION }}/cmake-{{ VERSION }}-linux-{{ machine_architecture.stdout }}.tar.gz" | \
+    tar --strip-components=1 -xz -C /usr/local
+  args:
+    executable: /bin/bash

@@ -1,0 +1,7 @@
+Log file created at: 2023/07/29 18:22:04
+Running on machine: d8c0479259a9
+Running duration (h:mm:ss): 0:00:33
+Log line format: [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
+W20230729 18:22:04.717703  2294 pipelineUtils.hpp:101] [bus_call] 
+ -- EOS (end of stream) ... terminating pipeline
+W20230729 18:22:05.791708  2294 Pipeline.cpp:544] Pipeline is finished, trigger safe application exit

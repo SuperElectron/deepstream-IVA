@@ -1,0 +1,18 @@
+---
+
+- name: [lexLib.yml] Copy libraries for aarch64
+  copy:
+    src: libraries/x86_64/libLexActivator.so
+    dest: /usr/local/lib/libLexActivator.so
+  when: machine_architecture == "aarch64"
+
+- name: [lexLib.yml] Copy libraries for x86_64
+  copy:
+    src: libraries/aarch64/libLexActivator.so
+    dest: /usr/local/lib/libLexActivator.so
+  when: machine_architecture == "x86_64"
+
+- name: [lexLib.yml] Change file permissions to 777
+  file:
+    path: /usr/local/lib/libLexActivator.so
+    mode: "0777"

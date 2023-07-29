@@ -1,0 +1,19 @@
+[Unit]
+Description=FocusBug-overlay project container (video-pipeline)
+Requires=docker.service
+After=docker-database.service
+
+[Service]
+User=mat
+#User=focusbug-overlay
+RestartSec=5
+Restart=on-failure
+TimeoutSec=30
+ExecStartPre=-/bin/bash -c "docker stop video-pipeline video-pipeline-prod ||  echo 'stopped containers'"
+ExecStartPre=-/bin/bash -c "docker container rm video-pipeline video-pipeline-prod || echo 'removed containers'"
+ExecStartPre=/bin/bash -c "/home/focusbug-overlay/code/focusBug-overlay/.docker/wait_until_kafka_starts.sh "
+ExecStart=/bin/bash -c "unset DISPLAY; export DISPLAY=:1; xhost +; make -C /home/focusbug-overlay/code/focusBug-overlay start_video_prod"
+ExecStop=/usr/bin/docker stop video-pipeline-prod
+
+[Install]
+WantedBy=graphical.target

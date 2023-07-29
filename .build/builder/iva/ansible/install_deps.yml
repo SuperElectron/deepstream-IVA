@@ -1,0 +1,39 @@
+# ansible-tasks -i inventory.yml install_deps.yml --extra-vars "ansible_become_pass=spyder"
+
+---
+- name: Install deps on hardware
+  hosts: target_hosts # Using the group name defined in inventory.yml
+  become: yes
+  gather_facts: yes
+  vars:
+    HOME_DIR: "/home/{{ ansible_user }}"
+
+  tasks:
+    - name: Save system architecture for saving paths
+      shell: uname -m
+      register: machine_architecture
+    - name: Print the machine architecture
+      debug:
+        var: machine_architecture.stdout
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+    - name: Set ~/.bashrc variables
+      include_tasks: tasks/env.yml
+
+    - name: Install apt packages
+      include_tasks: tasks/apt.yml
+    - name: Install cmake
+      include_tasks: tasks/cmake.yml
+    - name: Install vkpkg
+      include_tasks: tasks/vcpkg.yml
+    - name: Install modern-cpp-kafka
+      include_tasks: tasks/messaging.yml
+    - name: Install deepstream_yolo repo
+      include_tasks: tasks/yolo.yml
+
+  handlers:
+    - name: Reload Bashrc
+      shell: source "{{ HOME_DIR }}/.bashrc"
+      ignore_errors: true

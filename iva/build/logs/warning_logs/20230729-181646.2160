@@ -1,0 +1,6 @@
+Log file created at: 2023/07/29 18:16:46
+Running on machine: d8c0479259a9
+Running duration (h:mm:ss): 0:00:00
+Log line format: [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
+W20230729 18:16:46.222905  2160 pipelineUtils.hpp:675] Found a duplicate entry: /root/.iva/./sample_videos/sample_720p.mp4
+W20230729 18:16:46.223867  2160 Mediator.cpp:92] [FAILED] Called: events::Actions::START_MODULES 

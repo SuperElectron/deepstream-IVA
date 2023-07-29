@@ -73,7 +73,6 @@ dist
 **/data
 **/CMakeFiles
 **/cmake-build-debug
-**/build*
 **/bin
 
 # Project specifics
