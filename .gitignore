@@ -74,6 +74,7 @@ dist
 **/CMakeFiles
 **/cmake-build-debug
 **/bin
+**/build
 
 # Project specifics
 docs/html
