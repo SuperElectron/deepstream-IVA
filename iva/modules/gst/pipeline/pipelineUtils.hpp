@@ -421,13 +421,11 @@ inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_
   // create elements
   GstElement *nv_mux, *nv_infer, *nv_tracker, *nv_convert, *nv_demux;
   nv_mux = gst_element_factory_make("nvstreammux", "nv_mux");
-
   // set buffer memory type, and if on JETSON, then set to 0!
   int mem_type = 3;
 #ifdef PLATFORM_TEGRA
   mem_type = 0;
 #endif
-
   g_object_set(nv_mux,
                "nvbuf-memory-type", mem_type,
                "batch-size", num_src,
@@ -437,10 +435,11 @@ inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_
                "sync-inputs", false,
                "live-source", live_source,
                NULL);
+
   nv_infer = gst_element_factory_make("nvinfer", "nv_detection");
   g_object_set(nv_infer,
                "config-file-path",detection_file.c_str(),
-//               "batch-size", 1,
+               "batch-size", num_src,
                "qos", 1,
                NULL);
 
@@ -452,6 +451,15 @@ inline GstElement* createInferenceBinToStreamDemux(std::string binName, int num_
                "tracker-width", 640,
                "tracker-height", 480,
                NULL);
+
+//  nv_infer = gst_element_factory_make("nvinfer", "nv_classifier");
+//  g_object_set(nv_infer,
+//               "config-file-path",detection_file.c_str(),
+//               "batch-size", num_src,
+//               "qos", 1,
+//               NULL);
+
+
   nv_convert = gst_element_factory_make("nvvideoconvert", "nv_convert");
   nv_demux = gst_element_factory_make("nvstreamdemux", "nv_demux");
 
